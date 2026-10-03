@@ -1,0 +1,19 @@
+<html><body style="margin:0;background:#888">
+<style>
+.c{width:1080px;height:1080px;position:relative;background:linear-gradient(135deg,#0d0d0d 50%,#f2f0eb 50%);overflow:hidden}
+.c svg{position:absolute;inset:0;mix-blend-mode:difference}
+</style>
+<div id="w"></div>
+<script>
+const s='fill="none" stroke="#fff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"';
+const icons={
+logo:`<circle cx="540" cy="540" r="250" ${s}/><path d="M540 290a250 250 0 0 0 0 500z" fill="#fff"/>`,
+about:`<circle cx="540" cy="430" r="110" ${s}/><path d="M330 780c20-140 110-210 210-210s190 70 210 210" ${s}/>`,
+services:`<rect x="330" y="400" width="420" height="320" rx="40" ${s}/><path d="M460 400v-50a40 40 0 0 1 40-40h80a40 40 0 0 1 40 40v50M330 540h420" ${s}/>`,
+work:`<rect x="310" y="330" width="460" height="420" rx="40" ${s}/><circle cx="440" cy="460" r="45" ${s}/><path d="M310 680l150-140 110 100 70-60 130 120" ${s}/>`,
+reviews:`<path d="M540 300l70 145 160 22-116 112 28 158-142-75-142 75 28-158-116-112 160-22z" ${s}/>`,
+offers:`<path d="M330 330h220l230 230-220 220-230-230z" ${s}/><circle cx="440" cy="440" r="35" fill="#fff"/>`,
+contact:`<path d="M380 320l80 0 40 120-60 40c30 70 90 130 160 160l40-60 120 40v80c0 40-30 60-70 60-250-20-390-160-410-410 0-40 20-70 60-70z" ${s}/>`,
+faq:`<circle cx="540" cy="540" r="250" ${s}/><path d="M460 470a80 80 0 1 1 110 75c-20 10-30 25-30 45v15" ${s}/><circle cx="540" cy="680" r="22" fill="#fff"/>`};
+for(const k in icons)w.innerHTML+=`<div class="c" id="${k}"><svg viewBox="0 0 1080 1080">${icons[k]}</svg></div>`;
+</script></body></html>
