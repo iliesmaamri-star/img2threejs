@@ -2,7 +2,6 @@
 <body style="margin:0;background:#888">
 <style>
 .c{width:1080px;height:1080px;position:relative;background:#121212;overflow:hidden}
-.c::before{content:"";position:absolute;inset:0;background:#1d1d1d;clip-path:polygon(0 72%,100% 52%,100% 100%,0 100%)}
 .c svg{position:absolute;inset:0}
 .t{position:absolute;left:0;right:0;top:715px;text-align:center;color:#fff;font:500 92px Rajdhani;letter-spacing:.32em;padding-left:.32em}
 </style>
@@ -12,11 +11,11 @@ const s='fill="none" stroke="#fff" stroke-width="22" stroke-linejoin="miter" str
 const Y='transform="translate(0,-90)"';
 const icons={
 logo:['',`<image href="logo-src.png" x="190" y="283" width="700" height="513"/>`],
-projets:['PROJETS',`<g ${Y}><path d="M360 400h130l40 45h190v260H360z" ${s}/><path d="M360 480h360" ${s}/></g>`],
+projets:['PROJETS',`<g ${Y}><path d="M440 730V360M440 360h280M440 360l-80 70h80M440 430l60-70M500 360l-60 70M660 360v140" ${s}/><rect x="625" y="500" width="70" height="55" ${s}/><path d="M380 730h120" ${s}/></g>`],
 '3d':['3D',`<g ${Y}><path d="M540 340l170 95v200l-170 95-170-95V435z" ${s}/><path d="M370 435l170 95 170-95M540 530v200" ${s}/></g>`],
 archi:['ARCHI',`<g ${Y}><path d="M380 720V470l90-35v285M470 720V400l100-40v360M570 720V500l130-45v265M340 720h400" ${s}/><path d="M640 560v40M640 640v40M410 540v40M410 620v40" ${s}/></g>`],
 interieur:['INTÉRIEUR',`<g ${Y}><path d="M380 560v-80h320v80M340 560h400v120H340zM370 680v40M710 680v40M420 560v40h240v-40" ${s}/><path d="M540 340v60M490 400h100l-15 0" ${s}/></g>`],
-chantier:['CHANTIER',`<g ${Y}><path d="M440 730V360M440 360h280M440 360l-80 70h80M440 430l60-70M500 360l-60 70M660 360v140" ${s}/><rect x="625" y="500" width="70" height="55" ${s}/><path d="M380 730h120" ${s}/></g>`],
+chantier:['CHANTIER',`<g ${Y}><path d="M370 620a170 170 0 0 1 340 0" ${s}/><path d="M330 620h420v50H330z" ${s}/><path d="M540 450v-30M490 460v90M590 460v90" ${s}/></g>`],
 contact:['CONTACT',`<g ${Y}><rect x="350" y="420" width="380" height="270" ${s}/><path d="M350 420l190 150 190-150" ${s}/></g>`]};
 for(const k in icons){const [t,i]=icons[k];w.innerHTML+=`<div class="c" id="${k}"><svg viewBox="0 0 1080 1080">${i}</svg>${t?`<div class="t">${t}</div>`:''}</div>`}
 </script></body></html>
