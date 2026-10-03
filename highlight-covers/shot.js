@@ -1,0 +1,4 @@
+const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:1080,height:1080}});await p.goto('file://'+__dirname+'/covers.html');await p.evaluate(()=>document.fonts.ready);await p.waitForTimeout(500);
+const ids=[];for(const e of await p.$$('.c')){const id=await e.getAttribute('id');ids.push(id);await e.screenshot({path:id+'.png'})}
+require('fs').writeFileSync(__dirname+'/p.html','<body style="margin:0;background:#fff;display:flex;gap:20px;padding:20px">'+ids.map(n=>`<div style="text-align:center;font:13px sans-serif"><img src="${n}.png" style="width:130px;border-radius:50%;border:2px solid #ddd"></div>`).join('')+'</body>');
+await p.setViewportSize({width:1100,height:180});await p.goto('file://'+__dirname+'/p.html');await p.waitForTimeout(300);await p.screenshot({path:'preview.png'});require('fs').unlinkSync(__dirname+'/p.html');await b.close()})();
