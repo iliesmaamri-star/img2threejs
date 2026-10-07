@@ -223,6 +223,49 @@ eq(await L(P, () => window.__ledger.clientTotals("_office").b), 50000, "office a
 eq(await L(P, () => window.__ledger.companyTotals().b), comp0, "total cash unchanged by an internal transfer");
 eq((await L(P, () => window.__ledger.profitCalc())).dist, 50000, "only transferred fees count as office profit");
 
+console.log("9b. Office: two partners, 50% each, kept apart from client money");
+await P.click("[data-act=tab][data-tab=home]");
+const doors = (await P.$$(".doors .door")).length, studio = await P.textContent(".studio-n");
+ok(doors === 2 && studio.trim() === "Contrast Studio", `home shows Contrast Studio and two areas (${doors} areas, “${studio.trim()}”)`);
+await P.screenshot({ path: path.join(outDir, "10-home-phone.png"), fullPage: true });
+await P.click(".door[data-tab=office]");
+await P.click("[data-act=osub][data-v=team]");
+for (const name of ["الشريك الأول", "الشريك الثاني"]) {
+  await P.click("[data-act=new-member]");
+  ok((await P.inputValue("#mf-kind")) === "partner" && (await P.inputValue("#mf-share")) === "50", `${name}: partner at 50% by default`);
+  await P.fill("#mf-name", name);
+  await submit(P); await closed(P);
+}
+const [pa, pb] = await L(P, () => window.__ledger.S.members.filter(m => m.kind === "partner").sort((a, b) => a.createdAt.localeCompare(b.createdAt)).map(m => m.id));
+await P.click("[data-act=osub][data-v=overview]");
+await P.click("[data-act=office-entry][data-type=in]");
+await P.fill("#ef-amount", "300000");
+await submit(P); await closed(P);
+await P.click("[data-act=office-entry][data-cat=office]");
+await P.fill("#ef-amount", "60000");
+await P.selectOption("#ef-member", pa);
+await submit(P); await closed(P);
+await P.click("[data-act=office-entry][data-cat=draw]");
+ok((await P.inputValue("#ef-cat")) === "draw", "withdrawal form opens on the profit-draw category");
+await P.selectOption("#ef-benef", pa);
+await P.fill("#ef-amount", "50000");
+await submit(P); await closed(P);
+const split = await L(P, () => { const ks = [...window.__store.keys()]; return { office: ks.filter(k => k.startsWith("office/")).length, leaked: ks.filter(k => k.startsWith("entries/") && window.__store.get(k).clientId === "_office").length }; });
+ok(split.office === 3 && split.leaked === 0, "office transactions are stored in the partners-only office collection");
+const pf = await L(P, () => window.__ledger.profitCalc());
+eq(pf.dist, 290000, "profit = fee 50 000 + income 300 000 − office expenses 60 000");
+eq(pf.dist * pf.share[pa] / 100, 145000, "each partner's 50% share");
+eq(pf.draws[pa], 50000, "partner 1 withdrew 50 000 from profits");
+eq(pf.expBy[pa], 60000, "partner 1 took 60 000 for office expenses");
+eq(await L(P, () => window.__ledger.clientTotals("_office").b), 240000, "office balance after expenses and withdrawals");
+const otxt = norm(await P.textContent("main"));
+ok(otxt.includes("الشريك الأول") && otxt.includes("95 000") && otxt.includes("145 000"), "partners table: share 145 000, remaining 95 000");
+await P.screenshot({ path: path.join(outDir, "11-office-phone.png"), fullPage: true });
+await P.click("[data-act=tab][data-tab=clients]");
+await P.click("[data-act=csub][data-v=ops]");
+ok(!norm(await P.textContent("main")).includes("300 000"), "office income stays out of the clients log");
+await openProject(P, "c1");
+
 console.log("10. Low-balance alert");
 ok(!(await stats(P, "c1")).low, "no alert while the balance is healthy");
 await P.click(".qa [data-act=expense][data-kind=material]");
@@ -245,7 +288,7 @@ await P.waitForSelector("text=طلب دفعة N°001");
 let rq = await L(P, () => window.__ledger.S.requests.map(r => ({ id: r.id, no: r.no, status: window.__ledger.reqStatus(r) })));
 ok(rq.length === 1 && rq[0].no === 1 && rq[0].status === "draft", "first request is N°001, Draft");
 await P.click("[data-act=req-sent]");
-await P.waitForFunction(() => window.__ledger.S.requests[0].sentAt);
+await P.waitForFunction(() => window.__ledger.S.requests[0].sentAt && !document.querySelector("[data-act=req-sent]"));
 ok((await L(P, () => window.__ledger.reqStatus(window.__ledger.S.requests[0]))) === "sent", "marked Sent");
 ok((await L(P, () => (window.__ledger.S.requests[0].pdfs || []).length)) === 1, "sent PDF is archived in file storage");
 await P.click("[data-act=req-pay]");
@@ -278,7 +321,8 @@ fs.writeFileSync(path.join(outDir, "07-pdf-page.png"), Buffer.from(png.split(","
 await P.keyboard.press("Escape");
 
 console.log("13. Phases are data, not code");
-await P.click("[data-act=tab][data-tab=settings]");
+await P.click("[data-act=tab][data-tab=office]");
+await P.click("[data-act=osub][data-v=settings]");
 await P.fill("#ph-new", "أعمال إضافية");
 await P.click("[data-act=ph-add]");
 await P.click("[data-act=ph-save]");
@@ -289,7 +333,8 @@ ok((await P.$$eval("#xf-phase option", os => os.map(o => o.textContent))).includ
 await P.keyboard.press("Escape");
 
 console.log("14. Worker page and timeline");
-await P.click("[data-act=tab][data-tab=people]");
+await P.click("[data-act=tab][data-tab=clients]");
+await P.click("[data-act=csub][data-v=workers]");
 await P.click(`[data-act=worker][data-id="${wid}"]`);
 const wtxt = norm(await P.textContent("main"));
 ok(wtxt.includes("محمد") && wtxt.includes("100 000") && wtxt.includes("70 000") && wtxt.includes("30 000"), "worker page shows due, paid, remaining");
@@ -306,6 +351,8 @@ console.log("15. Desktop and dark mode");
 const D = await open({ seed: await L(P, () => Object.fromEntries(window.__store)), dark: true }, { width: 1280, height: 900 });
 await openProject(D, "c1");
 await D.screenshot({ path: path.join(outDir, "09-project-desktop-dark.png"), fullPage: true });
+await D.click("[data-act=tab][data-tab=home]");
+await D.screenshot({ path: path.join(outDir, "12-home-desktop-dark.png") });
 ok(D.__errors.length === 0, "no script errors on desktop");
 
 console.log("16. Permissions");
@@ -318,8 +365,11 @@ await C.fill("#pf-amount", "10000");
 await submit(C); await closed(C);
 const ce = (await entries(C)).find(e => e.amount === 10000);
 ok(ce && Math.abs(Date.parse(ce.at) - Date.now()) < 120000, "contributor entry is stamped with the current time");
-await C.click("[data-act=tab][data-tab=settings]");
-ok(await C.$eval("#st-company", el => el.disabled), "contributor cannot change settings");
+await C.keyboard.press("Escape");
+await C.click("[data-act=tab][data-tab=home]");
+ok(!(await C.$("[data-act=tab][data-tab=office]")) && await C.isVisible(".door.locked"), "contributor sees the office area locked");
+await C.click("#fab");
+ok(!(await C.$("[data-act=office-entry]")) && !!(await C.$("[data-act=transfer]")), "contributor cannot record office money, only transfers");
 const R = await open({ seed: LEGACY, canWrite: false });
 await openProject(R, "c1");
 ok(await R.$eval("#fab", el => el.hidden) && !(await R.$(".qa")), "read-only viewer sees no write buttons");

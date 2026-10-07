@@ -1,4 +1,4 @@
-<title>دفتر حسابات الورشات</title>
+<title>Contrast Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@600;700&display=swap">
@@ -277,6 +277,23 @@ details.more .inner{display:flex;flex-direction:column;gap:10px}
 .phed .btn{padding:6px 10px}
 .logo-prev{width:64px;height:64px;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:var(--surface)}
 .tabs2{display:flex;gap:6px;flex-wrap:wrap}
+.subnav{display:flex;gap:6px;flex-wrap:wrap}
+.subnav .btn[aria-current="page"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.studio{gap:4px}
+.studio-n{font-family:var(--f-body);font-weight:700;font-size:clamp(1.9rem,6vw,3rem);letter-spacing:-.01em;line-height:1.1}
+.studio p{margin:0}
+.doors{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.doors{grid-template-columns:1fr}}
+.door{display:flex;flex-direction:column;gap:12px;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;min-width:0;color:var(--fg)}
+.door:hover{border-color:var(--fg)}
+.door h2{font-size:1.3rem}
+.door .kv{font-size:.95rem}
+.door .go{font-weight:700;margin-top:auto}
+.door.inv{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.door.inv .label,.door.inv .kv dt,.door.inv .cur,.door.inv p{color:inherit;opacity:.72}
+.door.inv:hover{border-color:var(--accent)}
+.door.locked{cursor:default}
+.door p{margin:0}
 </style>
 
 <div id="app" dir="rtl" lang="ar">
@@ -320,7 +337,8 @@ const UNITS = ["قضيب","كيس","m³","m²","m","طن","kg","وحدة","شا�
 const SPECIALTIES = ["بنّاء","حداد","نجار خرسانة","كهربائي","سبّاك","مبلّط","جبّاس","دهّان","نجار ألمنيوم","عامل","سائق","مقاول من الباطن"];
 const REQ = {draft:["مسودة","Draft"], sent:["مُرسل","Sent"], unpaid:["غير مدفوع","Unpaid"], partial:["مدفوع جزئيا","Partially Paid"], paid:["مدفوع","Paid"], cancelled:["ملغى","Cancelled"]};
 const DEFAULT_REASON = "Versement pour poursuite des travaux.";
-const TABS = [["home","الرئيسية"],["clients","الزبائن والمشاريع"],["ops","سجل العمليات"],["people","الفريق والعمال"],["settings","الإعدادات"]];
+const TABS = [["home","الرئيسية"],["office","المكتب"],["clients","الزبائن"]];
+const BRAND = "Contrast Studio";
 const ICON_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7L14 5.5a3.4 3.4 0 014.8 4.8l-8.4 8.4a1.7 1.7 0 01-2.4-2.4L15.5 8.8"/></svg>';
 const TAB_ID = Math.random().toString(36).slice(2);
 const AUDIT_KEYS = ["type","amount","at","clientId","phaseId","kind","category","item","desc","qty","unit","unitPrice","supplier","workerId","jobId","requestId","feeKind","memberId","fromId","toId","beneficiaryId","method","ref","note"];
@@ -330,9 +348,9 @@ const KEY_LABEL = {amount:"المبلغ",at:"التاريخ والساعة",clie
 const S = {
   ready:false, noDb:false, db:null, user:null, assets:null,
   clients:[], entries:[], members:[], workers:[], jobs:[], requests:[], settings:{}, phasesDoc:null,
-  loaded:{clients:false, entries:false, members:false, workers:false, jobs:false, requests:false},
+  loaded:{clients:false, entries:false, office:false, members:false, workers:false, jobs:false, requests:false},
   me:null, meProfile:null, readOnly:false, canEdit:false, prof:{}, profAsked:new Set(),
-  tab:"home", clientId:null, pview:"dash", phaseId:"", workerId:null, audit:false, cq:"",
+  tab:"home", osub:"overview", csub:"list", clientId:null, pview:"dash", phaseId:"", workerId:null, cq:"", _main:[], _office:[],
   f:{q:"", type:"", client:"", member:"", month:""},
   setDraft:null, phDraft:null, phNew:"",
 };
@@ -389,7 +407,9 @@ const myMember = () => S.me ? S.members.find(m => m.userId === S.me) : null;
 const active = () => S.entries.filter(e => !e.void);
 const reqNo = r => r ? String(r.no || 0).padStart(3,"0") : "";
 function sortEntries(list){ return list.slice().sort((a,b) => (b.at||"").localeCompare(a.at||"") || (b.createdAt||"").localeCompare(a.createdAt||"")); }
-const strip = o => { const c = {...o}; delete c.id; return c; };
+const strip = o => { const c = {...o}; delete c.id; delete c._col; return c; };
+/* office transactions live in their own collection that only the partners (editors) can read */
+const epath = e => `${e._col || "entries"}/${e.id}`;
 
 /* ---------- phases ---------- */
 function phaseList(){ const l = S.phasesDoc && Array.isArray(S.phasesDoc.list) && S.phasesDoc.list.length ? S.phasesDoc.list : DEFAULT_PHASES; return l; }
@@ -526,27 +546,37 @@ function draw(){
 function go(patch){ Object.assign(S, patch); try{ localStorage.setItem("ledger.tab", S.tab); }catch(_){} draw(); window.scrollTo(0,0); }
 
 function header(){
-  const co = S.settings.company || "دفتر حسابات الورشات";
+  const co = S.settings.company || BRAND;
   const mm = myMember();
-  const role = S.readOnly ? "اطّلاع فقط" : S.canEdit ? "محرّر" : "مساهم";
+  const role = S.readOnly ? "اطّلاع فقط" : S.canEdit ? "شريك · محرّر" : "مساهم";
   const who = S.meProfile ? `<span class="who"><img src="${esc(S.meProfile.avatarUrl)}" alt=""><span>${esc(S.meProfile.name || "أنت")}${mm ? " · " + esc(mm.name) : ""} · ${role}</span></span>` : "";
+  const tabs = TABS.filter(([k]) => k !== "office" || S.canEdit);
   return `<div class="brand">
     <div class="brand-l">
-      <svg class="mark" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="7" fill="var(--accent)"/><path d="M8 25V14l9-6 9 6v11" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linejoin="round"/><path d="M13 25v-6h8v6M8 25h18" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round"/></svg>
-      <div><h1>${esc(co)}</h1><div class="sub">متابعة أموال كل زبون ومشروع</div></div>
+      <svg class="mark" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="7" fill="var(--fg)"/><path d="M17 6a11 11 0 0 0 0 22z" fill="var(--bg)"/><circle cx="17" cy="17" r="11" fill="none" stroke="var(--bg)" stroke-width="2.2"/></svg>
+      <div><h1>${esc(co)}</h1><div class="sub">حسابات المكتب والزبائن</div></div>
     </div>${who}</div>
-    <nav class="tabs" aria-label="الأقسام">${TABS.map(([k,l]) => `<button class="tab" data-act="tab" data-tab="${k}" ${S.tab===k?'aria-current="page"':""}>${l}</button>`).join("")}</nav>`;
+    <nav class="tabs" aria-label="الأقسام">${tabs.map(([k,l]) => `<button class="tab" data-act="tab" data-tab="${k}" ${S.tab===k?'aria-current="page"':""}>${l}</button>`).join("")}</nav>`;
 }
 
 function view(){
   if (S.noDb) return `<section><div class="empty"><h2>الدفتر غير متصل بالتخزين</h2><p>افتحوا هذه الصفحة من حسابكم على claude.ai مع تسجيل الدخول، حتى تُحفظ العمليات وتظهر لكل أعضاء المكتب.</p></div></section>`;
   if (!S.ready) return `<section><div class="skel"></div><div class="skel"></div><p class="muted">جارٍ تحميل الدفتر…</p></section>`;
-  if (S.tab === "clients") return S.clientId ? (S.clientId === OFFICE ? officeView() : projectView(S.clientId)) : clientsView();
-  if (S.tab === "ops") return S.audit ? auditView() : opsView();
-  if (S.tab === "people") return S.workerId ? workerView(S.workerId) : peopleView();
-  if (S.tab === "settings") return settingsView();
+  if (S.tab === "office"){
+    if (!S.canEdit) return lockedOffice();
+    const sub = S.osub === "team" ? teamView() : S.osub === "audit" ? auditView() : S.osub === "settings" ? settingsView() : officeView();
+    return subNav("osub", S.osub, [["overview","حسابات المكتب"],["team","الشركاء والأعضاء"],["audit","سجل التدقيق"],["settings","الإعدادات"]]) + sub;
+  }
+  if (S.tab === "clients"){
+    if (S.clientId) return projectView(S.clientId);
+    if (S.workerId) return workerView(S.workerId);
+    const sub = S.csub === "workers" ? workersListView() : S.csub === "ops" ? opsView() : clientsView();
+    return subNav("csub", S.csub, [["list","ملفات الزبائن"],["workers","العمال والحرفيون"],["ops","سجل عمليات الزبائن"]]) + sub;
+  }
   return homeView();
 }
+const subNav = (act, cur, items) => `<nav class="subnav" aria-label="أقسام فرعية">${items.map(([k,l]) => `<button class="btn" data-act="${act}" data-v="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("")}</nav>`;
+const lockedOffice = () => `<section><div class="empty"><h2>حسابات المكتب خاصة بالشريكين</h2><p>يفتح هذا القسم لمن لديه صلاحية «محرّر» على الدفتر. اطلبوها من صاحب الدفتر.</p><button class="btn" data-act="tab" data-tab="home">رجوع للرئيسية</button></div></section>`;
 
 /* one transaction row, used everywhere */
 function opTitle(e){
@@ -605,34 +635,35 @@ function runningBalance(cid){
 
 /* ---------- home ---------- */
 function homeView(){
-  const tt = companyTotals();
-  let clientFunds = 0, remaining = 0;
-  for (const c of S.clients){ const st = projStats(c.id); clientFunds += st.bal; if (c.status !== "paused") remaining += st.remaining; }
-  const off = clientTotals(OFFICE);
+  const admin = S.canEdit;
+  let clientFunds = 0, remaining = 0, activeN = 0;
+  for (const c of S.clients){ const st = projStats(c.id); clientFunds += st.bal; if (c.status !== "paused") remaining += st.remaining; if (c.status !== "done") activeN++; }
   const lows = S.clients.filter(c => c.status !== "done").map(c => ({c, st:projStats(c.id)})).filter(x => x.st.low);
-  const recent = sortEntries(S.entries).slice(0, 8);
-  let html = "";
-  if (!S.members.length || !S.clients.length || !S.entries.length){
-    const s1 = S.members.length>0, s2 = S.clients.length>0, s3 = S.entries.length>0;
-    html += `<section><div class="sec-h"><h2>ابدأوا الدفتر في ثلاث خطوات</h2></div><div class="steps">
-      <div class="step ${s1?"ok":""}"><span class="no">1</span><b>أضيفوا الشريكين والأعضاء</b><span class="muted">وأضيفوا الصندوق أو الحساب البنكي إن وجد، حتى نعرف عند من توجد الأموال.</span>${S.readOnly?"":`<button class="btn ${s1?"":"pri"}" data-act="new-member">${s1?"إضافة عضو آخر":"إضافة شريك أو عضو"}</button>`}</div>
-      <div class="step ${s2?"ok":""}"><span class="no">2</span><b>أضيفوا الزبون الأول</b><span class="muted">اسم الزبون، المشروع، وقيمة العقد الإجمالية لمتابعة الدفعات المتبقية.</span>${S.readOnly?"":`<button class="btn ${!s2&&s1?"pri":""}" data-act="new-client">إضافة زبون</button>`}</div>
-      <div class="step ${s3?"ok":""}"><span class="no">3</span><b>سجّلوا أول عملية</b><span class="muted">دفعة من الزبون أو مصروف للمشروع، مع صورة الفاتورة. التاريخ والساعة يُسجّلان تلقائيا.</span>${S.readOnly?"":`<button class="btn ${!s3&&s2?"pri":""}" data-act="new-entry">تسجيل عملية</button>`}</div>
+  const off = clientTotals(OFFICE), p = profitCalc();
+  const drawn = Object.values(p.draws).reduce((a,b) => a+b, 0);
+  let html = `<section class="studio"><h2 class="studio-n">${esc(S.settings.company || BRAND)}</h2><p class="muted">اختاروا القسم: حسابات المكتب للشريكين، أو ملفات الزبائن ومشاريعهم.</p></section>`;
+  html += `<section class="doors">
+    ${admin ? `<button class="door inv" data-act="tab" data-tab="office">
+      <span class="label">المكتب · OFFICE</span><h2>حسابات المكتب والشريكين</h2>
+      <dl class="kv"><dt>رصيد المكتب</dt><dd><b>${money(off.b)}</b></dd><dt>الربح القابل للتوزيع</dt><dd>${money(p.dist)}</dd><dt>سحوبات الشريكين</dt><dd>${money(drawn)}</dd><dt>نسبة كل شريك</dt><dd>${S.members.filter(m=>m.kind==="partner").map(m => `${esc(m.name)} ${nf.format(p.share[m.id]||0)}%`).join(" · ") || "50% · 50%"}</dd></dl>
+      <span class="go">دخول المكتب ←</span></button>`
+    : `<div class="door inv locked"><span class="label">المكتب · OFFICE</span><h2>حسابات المكتب والشريكين</h2><p>خاص بالشريكين. يفتح لمن لديه صلاحية «محرّر».</p></div>`}
+    <button class="door" data-act="tab" data-tab="clients">
+      <span class="label">الزبائن · CLIENTS</span><h2>مداخيل ومصاريف الزبائن</h2>
+      <dl class="kv"><dt>أموال الزبائن في المشاريع</dt><dd><b class="${clientFunds<0?"neg":""}">${money(clientFunds)}</b></dd><dt>مشاريع جارية</dt><dd>${activeN}</dd><dt>متبقٍّ للتحصيل</dt><dd>${money(remaining)}</dd><dt>تنبيهات الرصيد</dt><dd>${lows.length ? `<span class="pill low">${lows.length} منخفض</span>` : "لا توجد"}</dd></dl>
+      <span class="go">ملفات الزبائن ←</span></button>
+  </section>`;
+  if (lows.length){
+    html += `<section>${lows.map(x => `<div class="alert bad low"><div class="low-b"><b>${esc(x.c.name)} · رصيد المشروع منخفض.</b><span>الرصيد ${money(x.st.bal)} أي ${pctTxt(x.st.pct)} مما دفعه الزبون.</span></div><button class="btn" data-act="client" data-id="${esc(x.c.id)}">فتح الملف</button></div>`).join("")}</section>`;
+  }
+  if (!S.readOnly && (!S.clients.length || (admin && S.members.filter(m=>m.kind==="partner").length < 2))){
+    const s1 = S.members.filter(m=>m.kind==="partner").length >= 2, s2 = S.clients.length > 0;
+    html += `<section><div class="sec-h"><h2>البداية</h2></div><div class="steps">
+      ${admin?`<div class="step ${s1?"ok":""}"><span class="no">1</span><b>أضيفوا الشريكين</b><span class="muted">كل شريك بنسبة 50%. اربطوا كل شريك بحسابه ليُختار تلقائيا في عملياته.</span><button class="btn ${s1?"":"pri"}" data-act="new-member">إضافة شريك</button></div>`:""}
+      <div class="step ${s2?"ok":""}"><span class="no">${admin?2:1}</span><b>أضيفوا الزبون الأول</b><span class="muted">اسم الزبون، المشروع، وقيمة العقد لمتابعة الدفعات المتبقية.</span><button class="btn ${!s2&&(s1||!admin)?"pri":""}" data-act="new-client">إضافة زبون</button></div>
+      <div class="step"><span class="no">${admin?3:2}</span><b>سجّلوا أول عملية</b><span class="muted">دفعة من الزبون أو مصروف، مع صورة الفاتورة. التاريخ والساعة يُسجّلان تلقائيا.</span><button class="btn" data-act="new-entry">تسجيل عملية</button></div>
     </div></section>`;
   }
-  html += `<section><div class="kpis">
-    <div class="kpi"><span class="label">أموال الزبائن · CLIENT FUNDS</span><span class="v ${clientFunds<0?"out":"in"}">${money(clientFunds)}</span><span class="h">مجموع أرصدة المشاريع</span></div>
-    <div class="kpi"><span class="label">أموال المكتب · OFFICE FUNDS</span><span class="v ${off.b<0?"out":""}">${money(off.b)}</span><span class="h">أتعاب ومداخيل المكتب ناقص مصاريفه</span></div>
-    <div class="kpi"><span class="label">إجمالي المتوفر</span><span class="v ${tt.b<0?"out":""}">${money(tt.b)}</span><span class="h">كل المداخيل ناقص كل المصاريف</span></div>
-    <div class="kpi"><span class="label">متبقٍّ للتحصيل</span><span class="v">${money(remaining)}</span><span class="h">من قيم العقود</span></div>
-  </div></section>`;
-  if (lows.length){
-    html += `<section>${lows.map(x => `<div class="alert bad low"><div class="low-b"><b>${esc(x.c.name)} · رصيد المشروع منخفض.</b><span>الرصيد ${money(x.st.bal)} أي ${pctTxt(x.st.pct)} مما دفعه الزبون.</span></div><button class="btn" data-act="client" data-id="${esc(x.c.id)}">فتح المشروع</button></div>`).join("")}</section>`;
-  }
-  html += `<div class="split"><section><div class="sec-h"><h2>آخر العمليات</h2>${S.entries.length?`<button class="btn ghost" data-act="tab" data-tab="ops">كل السجل</button>`:""}</div>
-    ${recent.length ? `<div class="ops">${recent.map(e=>opRow(e)).join("")}</div>` : `<div class="empty">لا توجد عمليات بعد. كل دفعة أو مصروف تسجّلونه يظهر هنا مع تاريخه وساعته.</div>`}</section>
-    <section><div class="sec-h"><h2>أين توجد الأموال</h2></div>${holdingsHtml(holdings())}</section></div>`;
-  if (S.clients.length) html += `<section><div class="sec-h"><h2>حالة المشاريع</h2><button class="btn ghost" data-act="tab" data-tab="clients">كل الزبائن</button></div>${clientsTable(S.clients.filter(c=>c.status!=="done"))}</section>`;
   return html;
 }
 function holdingsHtml(h){
@@ -661,14 +692,10 @@ function clientsView(){
   const q = S.cq.trim().toLowerCase();
   const list = S.clients.filter(c => !q || [c.name,c.project,c.location,c.phone].join(" ").toLowerCase().includes(q))
     .sort((a,b) => (a.status==="done") - (b.status==="done") || (b.createdAt||"").localeCompare(a.createdAt||""));
-  const off = clientTotals(OFFICE);
-  return `<section><div class="sec-h"><h2>الزبائن والمشاريع</h2>${S.readOnly?"":`<button class="btn pri" data-act="new-client">إضافة زبون</button>`}</div>
+  return `<section><div class="sec-h"><h2>ملفات الزبائن</h2>${S.readOnly?"":`<button class="btn pri" data-act="new-client">إضافة زبون</button>`}</div>
     <input type="search" id="cq" placeholder="ابحث بالاسم أو المشروع أو الهاتف" value="${esc(S.cq)}" aria-label="بحث في الزبائن">
     ${list.length ? `<div class="grid">${list.map(clientCard).join("")}</div>` : `<div class="empty">${S.clients.length?"لا يوجد زبون بهذا البحث.":"أضيفوا أول زبون مع قيمة العقد لتبدأ متابعة دفعاته ومصاريف مشروعه."}</div>`}
-  </section>
-  <section><div class="sec-h"><h2>حساب المكتب · OFFICE FUNDS</h2></div>
-    <button class="card" data-act="client" data-id="${OFFICE}"><h3>أموال المكتب منفصلة عن أموال الزبائن</h3>
-    <dl class="kv"><dt>المداخيل والأتعاب</dt><dd class="pos">${money(off.i)}</dd><dt>المصاريف</dt><dd class="neg">${money(off.o)}</dd><dt>الرصيد</dt><dd><b>${money(off.b)}</b></dd></dl></button></section>`;
+  </section>`;
 }
 function clientCard(c){
   const st = projStats(c.id);
@@ -691,7 +718,7 @@ function projectView(cid){
   if (!c) return `<section><button class="btn back" data-act="back">رجوع للزبائن</button><div class="empty">هذا الزبون غير موجود.</div></section>`;
   const st = projStats(cid);
   const sub = S.pview || "dash";
-  const backBtn = sub === "dash" ? `<button class="btn back" data-act="back">رجوع للزبائن</button>` : `<button class="btn back" data-act="pview" data-v="dash">رجوع إلى لوحة المشروع</button>`;
+  const backBtn = sub === "dash" ? `<button class="btn back" data-act="back">رجوع لملفات الزبائن</button>` : `<button class="btn back" data-act="pview" data-v="dash">رجوع إلى لوحة المشروع</button>`;
   const bar = `<div class="pbar"><div class="pn"><b>${esc(c.name)}</b><span>${esc(c.project||"")}</span></div>
     <div class="pv"><span class="label">الرصيد</span><span class="${st.bal<0?"neg":""}">${money(st.bal)}</span>${st.pct==null?"":`<span class="pill ${st.low?"low":"ok"}"><span class="num" dir="ltr">${pctTxt(st.pct)}</span></span>`}</div></div>`;
   let body;
@@ -744,7 +771,7 @@ function dashView(c, st){
     <button class="btn" data-act="new-request" data-client="${esc(id)}">+ طلب دفعة من العميل</button>
     <button class="btn" data-act="pview" data-v="receipts">عرض الفواتير (${nRec})</button>
     <button class="btn" data-act="pview" data-v="report">التقارير</button>
-  </div><div class="row"><button class="btn ghost" data-act="fee" data-client="${esc(id)}">تحويل أتعاب إلى حساب المكتب</button><button class="btn ghost" data-act="pview" data-v="requests">طلبات الدفع (${nReq})</button></div></section>`}
+  </div><div class="row">${S.canEdit?`<button class="btn ghost" data-act="fee" data-client="${esc(id)}">تحويل أتعاب إلى حساب المكتب</button>`:""}<button class="btn ghost" data-act="pview" data-v="requests">طلبات الدفع (${nReq})</button></div></section>`}
   ${open.length?`<section><div class="sec-h"><h2>طلبات دفع مفتوحة</h2></div><div class="ops">${open.map(reqRow).join("")}</div></section>`:""}
   <section><div class="sec-h"><h2>مراحل المشروع</h2><span class="muted" style="font-size:.82rem">تكلفة كل مرحلة</span></div>${phasesHtml(id)}</section>
   <section><div class="sec-h"><h2>آخر العمليات المالية</h2><button class="btn ghost" data-act="pview" data-v="history">كل العمليات</button></div>
@@ -850,24 +877,34 @@ function requestsView(c){
 /* ---------- office account ---------- */
 function officeView(){
   const list = entriesFor(OFFICE);
-  const t = clientTotals(OFFICE);
-  let feeIn = 0; for (const e of list) if (!e.void && e.type === "fee") feeIn += e.amount;
-  return `<section><button class="btn back" data-act="back">رجوع للزبائن</button>
-    <div class="hero"><div><h2>حساب المكتب · OFFICE FUNDS</h2><div class="muted">أموال الزبائن لا تدخل هنا إلا بتحويل أتعاب واضح من حساب المشروع.</div></div>
-    ${S.readOnly?"":`<div class="row"><button class="btn out" data-act="office-entry" data-type="out">مصروف للمكتب</button><button class="btn in" data-act="office-entry" data-type="in">دخل للمكتب</button></div>`}</div>
+  const t = clientTotals(OFFICE), p = profitCalc();
+  const partners = S.members.filter(m => m.kind === "partner");
+  const drawn = Object.values(p.draws).reduce((a,b) => a+b, 0);
+  const ro = S.readOnly;
+  return `<section><div class="hero"><div><h2>حسابات المكتب</h2><div class="muted">خاص بالشريكين. أموال الزبائن لا تدخل هنا إلا بتحويل أتعاب واضح من ملف المشروع.</div></div></div>
     <div class="kpis">
-      <div class="kpi"><span class="label">أتعاب من المشاريع</span><span class="v in">${money(feeIn)}</span><span class="h">Office / Study / Supervision fees</span></div>
-      <div class="kpi"><span class="label">مداخيل أخرى</span><span class="v in">${money(t.i - feeIn)}</span><span class="h">غير مرتبطة بزبون</span></div>
-      <div class="kpi"><span class="label">مصاريف المكتب</span><span class="v out">${money(t.o)}</span><span class="h">تشمل سحوبات الشركاء</span></div>
-      <div class="kpi"><span class="label">رصيد المكتب</span><span class="v ${t.b<0?"out":""}">${money(t.b)}</span><span class="h">أموال المكتب المتوفرة</span></div>
-    </div></section>
+      <div class="kpi"><span class="label">مداخيل المكتب</span><span class="v in">${money(p.fees + p.officeIn)}</span><span class="h">منها أتعاب من المشاريع ${nf.format(p.fees)}</span></div>
+      <div class="kpi"><span class="label">مصاريف المكتب</span><span class="v out">${money(p.overhead)}</span><span class="h">كراء، كهرباء، هاتف، تنقلات…</span></div>
+      <div class="kpi"><span class="label">سحوبات الشريكين من الأرباح</span><span class="v out">${money(drawn)}</span><span class="h">من الربح القابل للتوزيع ${nf.format(p.dist)}</span></div>
+      <div class="kpi"><span class="label">رصيد المكتب</span><span class="v ${t.b<0?"out":""}">${money(t.b)}</span><span class="h">المداخيل ناقص المصاريف والسحوبات</span></div>
+    </div>
+    ${ro?"":`<div class="qa"><button class="btn in" data-act="office-entry" data-type="in">+ دخل للمكتب</button><button class="btn out" data-act="office-entry" data-type="out" data-cat="office">+ مصروف للمكتب</button><button class="btn" data-act="office-entry" data-type="out" data-cat="draw">+ سحب أرباح شريك</button></div>
+    <div class="row"><button class="btn ghost" data-act="fee">تحويل أتعاب من مشروع إلى المكتب</button></div>`}
+  </section>
+  <section><div class="sec-h"><h2>الشريكان</h2><span class="muted" style="font-size:.82rem">الربح القابل للتوزيع = مداخيل المكتب − مصاريف المكتب = ${money(p.dist)}</span></div>
+    ${partners.length ? `<div class="grid">${partners.map(m => { const sh = p.share[m.id] || 0, ent = p.dist * sh / 100, dr = p.draws[m.id] || 0, ex = p.expBy[m.id] || 0; return `<button class="card" data-act="edit-member" data-id="${esc(m.id)}">
+      <div class="sec-h"><h3>${esc(m.name)}${m.userId===S.me?' <span class="pill">أنت</span>':""}</h3><span class="pill ok"><span class="num" dir="ltr">${nf.format(sh)}%</span></span></div>
+      <dl class="kv"><dt>نصيبه من الربح</dt><dd>${money(ent)}</dd><dt>سحب من الأرباح</dt><dd class="neg">${money(dr)}</dd><dt>سحب لمصاريف المكتب</dt><dd>${money(ex)}</dd><dt><b>المتبقي له من الأرباح</b></dt><dd class="${ent-dr<0?"neg":""}"><b>${money(ent-dr)}</b></dd></dl></button>`; }).join("")}</div>
+    <p class="muted" style="margin:0;font-size:.82rem">«سحب لمصاريف المكتب» هو ما أخذه الشريك أو دفعه من أجل مصاريف المكتب، ولا يُخصم من نصيبه. «سحب من الأرباح» يُخصم من نصيبه.${p.doneLeft>0?` في المشاريع المنتهية رصيد زبائن متبقٍّ ${money(p.doneLeft)} لم يُحوَّل إلى المكتب كأتعاب.`:""}</p>`
+    : `<div class="empty">أضيفوا الشريكين. لكل واحد 50% من الأرباح.${ro?"":`<button class="btn pri" data-act="new-member">إضافة شريك</button>`}</div>`}
+  </section>
   <section><div class="sec-h"><h2>سجل حساب المكتب</h2></div>${timeline(list, {ctx:OFFICE, rb:runningBalance(OFFICE), empty:"لا توجد عمليات في حساب المكتب بعد."})}</section>`;
 }
-
 /* ---------- operations & audit ---------- */
 function filtered(){
   const f = S.f, q = f.q.trim().toLowerCase();
   return sortEntries(S.entries.filter(e => {
+    if (!e.clientId || e.clientId === OFFICE) return false;
     if (f.type && e.type !== f.type) return false;
     if (f.client && e.clientId !== f.client && !(f.client === OFFICE && e.type === "fee")) return false;
     if (f.member && e.memberId !== f.member && e.fromId !== f.member && e.toId !== f.member && e.beneficiaryId !== f.member) return false;
@@ -880,11 +917,11 @@ function opsView(){
   const list = filtered(); const t = {i:0, o:0};
   for (const e of list){ if (e.void) continue; if (e.type==="in") t.i += e.amount; else if (e.type==="out") t.o += e.amount; }
   const opt = (arr, sel) => arr.map(([v,l]) => `<option value="${esc(v)}" ${sel===v?"selected":""}>${esc(l)}</option>`).join("");
-  return `<section><div class="sec-h"><h2>سجل العمليات</h2><div class="row"><button class="btn" data-act="audit">سجل التدقيق</button><button class="btn" data-act="export" ${S.entries.length?"":"disabled"}>تصدير CSV</button></div></div>
+  return `<section><div class="sec-h"><h2>سجل عمليات الزبائن</h2><div class="row"><button class="btn" data-act="export" ${S.entries.length?"":"disabled"}>تصدير CSV</button></div></div>
     <div class="filters">
       <input class="q" type="search" id="fq" placeholder="بحث: مادة، مورد، عامل، ملاحظة، رقم فاتورة، مبلغ" value="${esc(S.f.q)}" aria-label="بحث">
-      <select id="ft" aria-label="النوع"><option value="">كل الأنواع</option>${opt([["in","دخل"],["out","مصروف"],["fee","أتعاب للمكتب"],["transfer","تحويل"]], S.f.type)}</select>
-      <select id="fc" aria-label="الزبون"><option value="">كل الحسابات</option><option value="${OFFICE}" ${S.f.client===OFFICE?"selected":""}>حساب المكتب</option>${opt(S.clients.map(c=>[c.id,c.name]), S.f.client)}</select>
+      <select id="ft" aria-label="النوع"><option value="">كل الأنواع</option>${opt([["in","دفعة من زبون"],["out","مصروف"]].concat(S.canEdit?[["fee","أتعاب للمكتب"]]:[]), S.f.type)}</select>
+      <select id="fc" aria-label="الزبون"><option value="">كل الزبائن</option>${opt(S.clients.map(c=>[c.id,c.name]), S.f.client)}</select>
       <select id="fm" aria-label="العضو"><option value="">كل الأعضاء</option>${opt(S.members.map(m=>[m.id,m.name]), S.f.member)}</select>
       <input type="month" id="fmo" value="${esc(S.f.month)}" aria-label="الشهر">
     </div>
@@ -934,61 +971,57 @@ function auditView(){
   for (const c of S.clients) for (const h of c.history||[]) ev.push({at:h.at, by:h.by, txt:`عدّل بيانات ${esc(c.name)}: ${histText(h)}`});
   for (const w of S.workers) for (const h of w.history||[]) ev.push({at:h.at, by:h.by, txt:`عدّل بيانات العامل ${esc(w.name)}: ${histText(h)}`});
   ev.sort((a,b) => (b.at||"").localeCompare(a.at||""));
-  return `<section><div class="sec-h"><h2>سجل التدقيق</h2><button class="btn" data-act="audit">رجوع لسجل العمليات</button></div>
+  return `<section><div class="sec-h"><h2>سجل التدقيق</h2></div>
     <p class="muted" style="margin:0">كل إنشاء وتعديل وإلغاء، مع من قام به ومتى. لا يُحذف شيء من هذا السجل.</p>
     ${ev.length ? `<div class="ops">${ev.slice(0, 500).map(x => `<${x.act?"button":"div"} class="op" ${x.act?`data-act="${x.act}" data-id="${esc(x.id)}"`:""} style="grid-template-columns:minmax(0,1fr) auto"><span class="t" style="white-space:normal">${x.txt}</span><span class="m">${dt(x.at)}</span><span class="s">${esc(personName(x.by))}</span></${x.act?"button":"div"}>`).join("")}</div>` : `<div class="empty">لا توجد أحداث بعد.</div>`}</section>`;
 }
 
 /* ---------- team, workers, profit ---------- */
 function profitCalc(){
-  let officeIn = 0, fees = 0, overhead = 0; const draws = {};
+  let officeIn = 0, fees = 0, overhead = 0; const draws = {}, expBy = {};
   for (const e of active()){
     if (e.type === "fee"){ fees += e.amount; continue; }
     if (e.clientId !== OFFICE) continue;
     if (e.type === "in") officeIn += e.amount;
-    else if (e.type === "out"){ if (e.category === "draw") draws[e.beneficiaryId||""] = (draws[e.beneficiaryId||""]||0) + e.amount; else overhead += e.amount; }
+    else if (e.type === "out"){
+      if (e.category === "draw") draws[e.beneficiaryId||""] = (draws[e.beneficiaryId||""]||0) + e.amount;
+      else { overhead += e.amount; if (e.memberId) expBy[e.memberId] = (expBy[e.memberId]||0) + e.amount; }
+    }
   }
+  const partners = S.members.filter(m => m.kind === "partner");
+  const share = {}; for (const m of partners) share[m.id] = Number(m.share) > 0 ? Number(m.share) : 100 / partners.length;
   let doneLeft = 0; for (const c of S.clients) if (c.status === "done"){ const b = projStats(c.id).bal; if (b > 0) doneLeft += b; }
-  return {officeIn, fees, overhead, dist: fees + officeIn - overhead, draws, doneLeft};
+  return {officeIn, fees, overhead, dist: fees + officeIn - overhead, draws, expBy, share, doneLeft};
 }
-function peopleView(){
+function teamView(){
   const h = holdings();
   const partners = S.members.filter(m => m.kind === "partner");
-  const shareSum = partners.reduce((s,m) => s + (Number(m.share)||0), 0);
-  const p = profitCalc();
+  const shareSum = partners.reduce((s,m) => s + (Number(m.share) || 100 / partners.length), 0);
+  const transfers = S.entries.filter(e => e.type === "transfer");
   let html = `<section><div class="sec-h"><h2>الشركاء والأعضاء والصناديق</h2>${S.readOnly?"":`<button class="btn pri" data-act="new-member">إضافة</button>`}</div>`;
-  if (!S.members.length) html += `<div class="empty">أضيفوا الشريكين الرئيسيين مع نسبة كل واحد، ثم بقية الأعضاء، ثم الصندوق أو الحساب البنكي.</div>`;
+  if (!S.members.length) html += `<div class="empty">أضيفوا الشريكين، كل واحد بنسبة 50%، ثم بقية الأعضاء، ثم الصندوق أو الحساب البنكي.</div>`;
   else html += `<div class="grid">${["partner","member","account"].flatMap(g => S.members.filter(m => (m.kind||"member") === g)).map(m => `<button class="card" data-act="edit-member" data-id="${esc(m.id)}">
-      <div class="sec-h"><h3>${esc(m.name)}</h3><span class="pill">${esc(KIND[m.kind]||"عضو")}${m.kind==="partner"&&m.share?` · ${esc(m.share)}%`:""}</span></div>
+      <div class="sec-h"><h3>${esc(m.name)}</h3><span class="pill">${esc(KIND[m.kind]||"عضو")}${m.kind==="partner"?` · ${nf.format(Number(m.share) || 100/partners.length)}%`:""}</span></div>
       <dl class="kv"><dt>المبلغ الذي بحوزته</dt><dd class="${(h[m.id]||0)<0?"neg":""}"><b>${money(h[m.id]||0)}</b></dd>
       ${m.phone?`<dt>الهاتف</dt><dd><span dir="ltr" class="mono">${esc(m.phone)}</span></dd>`:""}
       ${m.userId?`<dt>الحساب</dt><dd>${esc(personName(m.userId))}${m.userId===S.me?" (أنت)":""}</dd>`:""}</dl></button>`).join("")}</div>`;
   if (partners.length && Math.abs(shareSum - 100) > 0.01) html += `<div class="alert"><div>مجموع نسب الشركاء <b>${nf.format(shareSum)}%</b> وليس 100%. عدّلوا النسب حتى يكون توزيع الأرباح صحيحا.</div></div>`;
-  html += `</section>`;
+  html += `</section><section><div class="sec-h"><h2>أين توجد الأموال</h2></div>${holdingsHtml(h)}</section>
+  <section><div class="sec-h"><h2>التحويلات بين الأعضاء</h2>${S.readOnly?"":`<button class="btn" data-act="transfer">+ تحويل</button>`}</div>${timeline(transfers, {empty:"لا توجد تحويلات. سجّلوا هنا كل مبلغ يسلّمه شخص أو صندوق لآخر."})}</section>`;
+  return html;
+}
+function workersListView(){
   const ws = S.workers.slice().sort((a,b) => a.name.localeCompare(b.name, "ar"));
-  html += `<section><div class="sec-h"><h2>العمال والحرفيون</h2>${S.readOnly?"":`<button class="btn" data-act="new-worker">إضافة عامل</button>`}</div>
+  return `<section><div class="sec-h"><h2>العمال والحرفيون</h2>${S.readOnly?"":`<button class="btn" data-act="new-worker">إضافة عامل</button>`}</div>
     ${ws.length ? `<div class="tw"><table><thead><tr><th>الاسم</th><th>التخصص</th><th class="n">المستحقات</th><th class="n">المقبوض</th><th class="n">المتبقي له</th></tr></thead><tbody>
     ${ws.map(w => { const x = workerStats(w.id); return `<tr class="click" data-act="worker" data-id="${esc(w.id)}" tabindex="0"><td><b>${esc(w.name)}</b></td><td class="muted">${esc(w.specialty||"")}</td><td class="n">${money(x.due)}</td><td class="n">${money(x.paid)}</td><td class="n ${x.rem>0?"neg":""}">${money(x.rem)}</td></tr>`; }).join("")}
-    </tbody></table></div>` : `<div class="empty">يُضاف العامل تلقائيا عند تسجيل أول دفعة له من صفحة المشروع، ويُختار بعدها من القائمة.</div>`}</section>`;
-  html += `<section><div class="sec-h"><h2>أرباح المكتب وتوزيعها على الشركاء</h2></div>
-    <div class="tw"><table style="min-width:0"><tbody>
-      <tr><td>أتعاب محوّلة من المشاريع</td><td class="n pos">${money(p.fees)}</td></tr>
-      <tr><td>مداخيل أخرى للمكتب</td><td class="n pos">${money(p.officeIn)}</td></tr>
-      <tr><td>مصاريف المكتب</td><td class="n neg">${money(-p.overhead)}</td></tr>
-      <tr><td><b>الربح القابل للتوزيع</b></td><td class="n"><b>${money(p.dist)}</b></td></tr>
-    </tbody></table></div>
-    <p class="muted" style="margin:0;font-size:.82rem">أموال الزبائن ليست أرباحا. لا يُحسب إلا ما حُوّل منها إلى حساب المكتب كأتعاب.${p.doneLeft>0?` في المشاريع المنتهية رصيد متبقٍّ ${money(p.doneLeft)} لم يُحوَّل بعد.`:""} سجّلوا ما يأخذه الشريك كمصروف للمكتب بصنف «سحب أرباح شريك».</p>
-    ${partners.length?`<div class="tw"><table><thead><tr><th>الشريك</th><th class="n">النسبة</th><th class="n">نصيبه من الربح</th><th class="n">ما سحبه</th><th class="n">المتبقي له</th></tr></thead><tbody>
-    ${partners.map(m => { const ent = p.dist * (Number(m.share)||0) / 100; const dr = p.draws[m.id]||0; return `<tr><td><b>${esc(m.name)}</b></td><td class="n"><span class="num" dir="ltr">${esc(m.share||0)}%</span></td><td class="n">${money(ent)}</td><td class="n neg">${money(dr)}</td><td class="n ${ent-dr<0?"neg":""}"><b>${money(ent-dr)}</b></td></tr>`; }).join("")}
-    </tbody></table></div>`:`<div class="empty">أضيفوا الشركاء بنسبهم لعرض نصيب كل واحد.</div>`}
-  </section>`;
-  return html;
+    </tbody></table></div>` : `<div class="empty">يُضاف العامل تلقائيا عند تسجيل أول دفعة له من ملف المشروع، ويُختار بعدها من القائمة.</div>`}</section>`;
 }
 function workerView(wid){
   const w = byId(S.workers, wid);
   if (!w) return `<section><button class="btn back" data-act="worker-back">رجوع</button><div class="empty">هذا العامل غير موجود.</div></section>`;
   const x = workerStats(wid);
-  return `<section><button class="btn back" data-act="worker-back">رجوع للفريق والعمال</button>
+  return `<section><button class="btn back" data-act="worker-back">رجوع للعمال والحرفيين</button>
     <div class="hero"><div><h2>${esc(w.name)}</h2><div class="muted">${esc(w.specialty||"بدون تخصص")}${w.phone?` · <span dir="ltr" class="mono">${esc(w.phone)}</span>`:""}</div>${w.notes?`<div class="notice" style="margin-top:6px">${esc(w.notes)}</div>`:""}</div>
     ${S.readOnly?"":`<button class="btn" data-act="edit-worker" data-id="${esc(wid)}">تعديل البيانات</button>`}</div>
     <div class="kpis">
@@ -1017,7 +1050,7 @@ function settingsView(){
     <div class="card">
       <div class="row">${d.logoId?`<img class="logo-prev" src="/_blob/${esc(d.logoId)}" alt="الشعار">`:`<span class="muted">لا يوجد شعار.</span>`}
         ${can && S.assets ? `<label class="btn"><input type="file" id="logo-in" accept="image/png,image/jpeg" hidden>${d.logoId?"تغيير الشعار":"رفع الشعار"}</label>${d.logoId?`<button class="btn ghost" data-act="logo-remove">إزالة</button>`:""}` : ""}</div>
-      <div class="f2">${f("company","اسم المكتب / الشركة","مثال: SARL Bâtiment …")}${f("activity","النشاط","Entreprise de bâtiment et travaux publics")}</div>
+      <div class="f2">${f("company","اسم المكتب / الشركة",BRAND)}${f("activity","النشاط","Entreprise de bâtiment et travaux publics")}</div>
       ${f("address","العنوان")}
       <div class="f2">${f("phone","الهاتف","","tel")}${f("email","البريد الإلكتروني","","email")}</div>
       ${f("legal","السجل التجاري والأرقام الجبائية","RC … · NIF … · NIS … · AI …")}
@@ -1162,6 +1195,7 @@ async function commitEntry(o){
   const btn = $("[type=submit]", sh), err = $(".err", sh), label = btn.textContent;
   btn.disabled = true;
   const e = editId ? byId(S.entries, editId) : null;
+  const col = e ? (e._col || "entries") : (data.clientId === OFFICE ? "office" : "entries");
   ctx.uploaded = ctx.uploaded || [];
   if (pend.length){
     try { const up = await uploadFiles(pend, (i,n) => { btn.textContent = `جارٍ رفع الملف ${i} من ${n}…`; }); ctx.uploaded = ctx.uploaded.concat(up); pend.length = 0; sh.querySelectorAll(".pend .thumb").forEach(t => t.remove()); }
@@ -1174,9 +1208,9 @@ async function commitEntry(o){
     const receipts = (e.receipts||[]).concat(ctx.uploaded);
     const prev = diff(e, data, AUDIT_KEYS);
     const history = (e.history||[]).concat(Object.keys(prev).length || ctx.uploaded.length ? [{at:now, by:S.me||null, prev, added:ctx.uploaded.length}] : []);
-    ok = await write(() => S.db.doc("entries/" + e.id).set({...strip(e), ...data, receipts, history, updatedAt:now, updatedBy:S.me||null}));
+    ok = await write(() => S.db.doc(col + "/" + e.id).set({...strip(e), ...data, receipts, history, updatedAt:now, updatedBy:S.me||null}));
   } else {
-    ok = await write(() => S.db.doc("entries/" + newId).set({...data, receipts:ctx.uploaded, createdAt:now, createdBy:S.me||null, history:[], void:false}));
+    ok = await write(() => S.db.doc(col + "/" + newId).set({...data, receipts:ctx.uploaded, createdAt:now, createdBy:S.me||null, history:[], void:false}));
   }
   if (ok){ closeModal(); toast(e ? "حُفظ التعديل" : (o.okMsg || `سُجّلت العملية ${fmtDT(now)}`)); return true; }
   btn.disabled = false; btn.textContent = label; return false;
@@ -1194,8 +1228,9 @@ function chooser(){
     <button class="ch out" data-act="expense" data-kind="material" data-client="${esc(cid)}" data-phase="${esc(ph)}"><b>+ شراء مواد</b><span>حديد، إسمنت، خرسانة…</span></button>
     <button class="ch out" data-act="expense" data-kind="labor" data-client="${esc(cid)}" data-phase="${esc(ph)}"><b>+ دفع عامل</b><span>حرفي، عامل، مقاول من الباطن</span></button>
     <button class="ch out" data-act="expense" data-kind="other" data-client="${esc(cid)}" data-phase="${esc(ph)}"><b>+ مصروف آخر</b><span>نقل، كراء معدات، وثائق…</span></button>
-    <button class="ch acc" data-act="fee" data-client="${esc(cid)}"><b>أتعاب إلى حساب المكتب</b><span>تحويل واضح من أموال المشروع</span></button>
-    <button class="ch acc" data-act="office-entry"><b>عملية للمكتب</b><span>مصاريف أو مداخيل المكتب، أو تحويل بين الأعضاء</span></button>
+    ${S.canEdit ? `<button class="ch acc" data-act="office-entry" data-type="out" data-cat="office"><b>مصروف للمكتب</b><span>كراء، كهرباء، هاتف… من أموال المكتب</span></button>
+    <button class="ch acc" data-act="fee" data-client="${esc(cid)}"><b>أتعاب إلى حساب المكتب</b><span>تحويل واضح من أموال المشروع</span></button>` : ""}
+    <button class="ch acc" data-act="transfer"><b>تحويل بين الأعضاء</b><span>تسليم مبلغ من شخص أو صندوق إلى آخر</span></button>
   </div>`);
 }
 
@@ -1451,13 +1486,14 @@ function entryForm(pre, editId){
   const e = editId ? byId(S.entries, editId) : null;
   const mm = myMember();
   const newId = e ? null : newEntryId();
-  const v = e ? {...e} : {type:pre.type||"out", amount:"", category:"", memberId: mm?mm.id:"", method:"cash", ref:"", supplier:"", note:"", fromId: mm?mm.id:"", toId:"", beneficiaryId:""};
+  const officeOk = S.canEdit;
+  const v = e ? {...e} : {type: officeOk ? (pre.type||"out") : "transfer", amount:"", category:pre.category||"", memberId: mm?mm.id:"", method:"cash", ref:"", supplier:"", note:"", fromId: mm?mm.id:"", toId:"", beneficiaryId:""};
   const pOpts = sel => `<option value="">— اختر الشريك —</option>` + S.members.filter(m=>m.kind==="partner").map(m => `<option value="${esc(m.id)}" ${sel===m.id?"selected":""}>${esc(m.name)}</option>`).join("");
-  const sh = openModal(`${sheetHead(e ? "تعديل العملية" : "عملية للمكتب")}
+  const sh = openModal(`${sheetHead(e ? "تعديل العملية" : officeOk ? (v.category === "draw" ? "سحب أرباح شريك" : "عملية للمكتب") : "تحويل بين الأعضاء")}
     <form novalidate style="display:flex;flex-direction:column;gap:12px">
-      <div class="seg" role="radiogroup" aria-label="نوع العملية">
+      <div class="seg" role="radiogroup" aria-label="نوع العملية" ${officeOk?"":"hidden"}>
         <label><input type="radio" name="ef-type" value="in" ${v.type==="in"?"checked":""}><span class="in">دخل للمكتب</span></label>
-        <label><input type="radio" name="ef-type" value="out" ${v.type==="out"?"checked":""}><span class="out">مصروف المكتب</span></label>
+        <label><input type="radio" name="ef-type" value="out" ${v.type==="out"?"checked":""}><span class="out">مصروف أو سحب</span></label>
         <label><input type="radio" name="ef-type" value="transfer" ${v.type==="transfer"?"checked":""}><span class="transfer">تحويل داخلي</span></label>
       </div>
       <label class="fld"><span>المبلغ (${esc(cur())})</span><input type="text" inputmode="decimal" id="ef-amount" class="amt-in" dir="ltr" value="${v.amount!==""?esc(String(v.amount)):""}" placeholder="0" autocomplete="off" autofocus></label>
@@ -1493,7 +1529,7 @@ function entryForm(pre, editId){
     sh.querySelectorAll(".f-tr").forEach(el => el.hidden = t !== "transfer");
     $(".f-sup", sh).hidden = t !== "out";
     $(".f-benef", sh).hidden = !(t === "out" && $("#ef-cat", sh).value === "draw");
-    $("#ef-mlabel", sh).textContent = t === "in" ? "من استلم المبلغ؟" : "من دفع المبلغ؟";
+    $("#ef-mlabel", sh).textContent = t === "in" ? "من استلم المبلغ؟" : $("#ef-cat", sh).value === "draw" ? "من سلّم المبلغ (صندوق أو شريك)؟" : "من دفع أو سحب المبلغ؟";
   }
   sync();
   sh.addEventListener("change", ev => {
@@ -1582,7 +1618,7 @@ function entryDetail(id){
     try {
       const up = await uploadFiles(files, (i,n) => { st.textContent = `جارٍ رفع ${i} من ${n}…`; });
       const cur0 = byId(S.entries, eid); const now = new Date().toISOString();
-      const ok = await write(() => S.db.doc("entries/"+eid).update({receipts:(cur0.receipts||[]).concat(up), history:(cur0.history||[]).concat([{at:now, by:S.me||null, prev:{}, added:up.length}])}));
+      const ok = await write(() => S.db.doc(epath(cur0)).update({receipts:(cur0.receipts||[]).concat(up), history:(cur0.history||[]).concat([{at:now, by:S.me||null, prev:{}, added:up.length}])}));
       if (ok){ toast("أُرفق الملف"); await until(() => (byId(S.entries, eid)?.receipts||[]).length >= (cur0.receipts||[]).length + up.length); entryDetail(eid); }
     } catch(x){ st.textContent = errMsg(x); }
   });
@@ -1673,7 +1709,7 @@ function requestDetail(id){
   const pays = sortEntries(S.entries.filter(e => e.type === "in" && e.requestId === r.id));
   const hist = (r.history||[]).map(h => `<div>${dt(h.at)} · ${esc(personName(h.by))}: ${histText(h)}</div>`).join("");
   const ro = S.readOnly, closed = s === "cancelled";
-  openModal(`${sheetHead(`طلب دفعة N°${esc(reqNo(r))} <span class="pill st-${s}">${REQ[s][0]} · ${REQ[s][1]}</span>`)}
+  const sheet = openModal(`${sheetHead(`طلب دفعة N°${esc(reqNo(r))} <span class="pill st-${s}">${REQ[s][0]} · ${REQ[s][1]}</span>`)}
     <div class="calc"><div><span>المطلوب</span><b>${money(r.amount)}</b></div><div><span>المدفوع</span><b class="pos">${money(p)}</b></div><div class="hl"><span>المتبقي</span><b>${money(Math.max(r.amount - p, 0))}</b></div></div>
     <dl class="kv"><dt>العميل</dt><dd>${esc(clientName(r.clientId))}</dd><dt>المشروع</dt><dd>${esc(byId(S.clients,r.clientId)?.project||"")}</dd>
       <dt>تاريخ الوثيقة</dt><dd>${esc(ymdToFr(r.date))}</dd>${r.due?`<dt>تاريخ الاستحقاق</dt><dd>${esc(ymdToFr(r.due))}</dd>`:""}
@@ -1688,13 +1724,16 @@ function requestDetail(id){
     <div id="rq-box"></div>
     <div class="foot"><button class="btn pri" data-act="req-pdf" data-id="${esc(r.id)}">عرض PDF</button>
       ${ro||closed?"":`${!r.sentAt?`<button class="btn" data-act="req-sent" data-id="${esc(r.id)}">تحديد كمُرسَل</button>`:""}${s!=="paid"?`<button class="btn in" data-act="req-pay" data-id="${esc(r.id)}">تسجيل دفعة لهذا الطلب</button>`:""}<button class="btn" data-act="req-edit" data-id="${esc(r.id)}">تعديل</button>${s!=="paid"?`<button class="btn danger" data-act="req-cancel" data-id="${esc(r.id)}">إلغاء الطلب</button>`:""}`}</div>`);
+  sheet.dataset.req = r.id;
 }
+/* refresh a request's details only if the person is still looking at them */
+const refreshRequest = id => { if ($("#modal-root .sheet")?.dataset.req === id) requestDetail(id); };
 async function markSent(id){
   const r = byId(S.requests, id); if (!r || r.sentAt) return;
   const now = new Date().toISOString();
   let pdfs = r.pdfs || [];
   if (S.assets){ try { const blob = await canvasToPdf(await requestCanvas(r)); const up = await S.assets.upload(blob, {type:"application/pdf"}); pdfs = pdfs.concat([{id:up.id, at:now, by:S.me||null}]); } catch(_){} }
-  if (await write(() => S.db.doc("requests/" + id).update({sentAt:now, sentBy:S.me||null, pdfs, history:(r.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"sent"}])}))) { toast("حُدِّد الطلب كمُرسَل"); await until(() => byId(S.requests, id)?.sentAt); requestDetail(id); }
+  if (await write(() => S.db.doc("requests/" + id).update({sentAt:now, sentBy:S.me||null, pdfs, history:(r.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"sent"}])}))) { toast("حُدِّد الطلب كمُرسَل"); await until(() => byId(S.requests, id)?.sentAt); refreshRequest(id); }
 }
 
 /* ---------- PDF: the document is drawn on an A4 canvas (Arabic shaping comes from the browser), then wrapped in a one-page PDF ---------- */
@@ -1733,7 +1772,7 @@ async function requestCanvas(r){
     g.moveTo(X(8),Y(25)); g.lineTo(X(8),Y(14)); g.lineTo(X(17),Y(8)); g.lineTo(X(26),Y(14)); g.lineTo(X(26),Y(25)); g.moveTo(X(13),Y(25)); g.lineTo(X(13),Y(19)); g.lineTo(X(21),Y(19)); g.lineTo(X(21),Y(25)); g.moveTo(X(8),Y(25)); g.lineTo(X(26),Y(25)); g.stroke();
   }
   let y = 19;
-  txt(s.company || "Entreprise de bâtiment", 46, y, {size:5, w:700}); y += 5.5;
+  txt(s.company || BRAND, 46, y, {size:5, w:700}); y += 5.5;
   for (const l of [s.activity, s.address, [s.phone ? "Tél : " + s.phone : "", s.email].filter(Boolean).join("  ·  "), s.legal].filter(Boolean)){ txt(l, 46, y, {size:3, color:MUTE}); y += 4.4; }
   const ty = Math.max(y, 40) + 4;
   hline(ty);
@@ -1772,7 +1811,7 @@ async function requestCanvas(r){
   txt("Le client (lu et approuvé)", 20, sy + 6, {size:3, color:MUTE});
   txt("Cachet et signature", 114, sy + 6, {size:3, color:MUTE});
   hline(283);
-  txt([s.company, s.phone, s.email].filter(Boolean).join("  ·  "), 16, 288, {size:2.7, color:MUTE});
+  txt([s.company || BRAND, s.phone, s.email].filter(Boolean).join("  ·  "), 16, 288, {size:2.7, color:MUTE});
   txt(`Document généré le ${fmtDT(new Date().toISOString())}`, 194, 288, {size:2.7, color:MUTE, align:"right"});
   return cv;
 }
@@ -1856,7 +1895,7 @@ function clientForm(id){
 }
 function memberForm(id){
   const m = id ? byId(S.members, id) : null;
-  const v = m || {name:"", kind: S.members.filter(x=>x.kind==="partner").length < 2 ? "partner" : "member", share:"", phone:"", userId:""};
+  const v = m || {name:"", kind: S.members.filter(x=>x.kind==="partner").length < 2 ? "partner" : "member", share:50, phone:"", userId:""};
   const used = S.entries.some(e => [e.memberId,e.fromId,e.toId,e.beneficiaryId].includes(id));
   const sh = openModal(`${sheetHead(m?"تعديل":"إضافة شريك أو عضو أو صندوق")}
     <form novalidate style="display:flex;flex-direction:column;gap:12px">
@@ -1874,7 +1913,7 @@ function memberForm(id){
     ev.preventDefault();
     const err = $(".err", sh);
     const name = $("#mf-name", sh).value.trim(); const kind = $("#mf-kind", sh).value;
-    const share = kind === "partner" ? parseNum($("#mf-share", sh).value || "0") : 0;
+    const share = kind === "partner" ? parseNum($("#mf-share", sh).value || "50") : 0;
     if (!name) { err.textContent = "اكتبوا الاسم."; return; }
     if (isNaN(share) || share < 0 || share > 100) { err.textContent = "النسبة بين 0 و 100."; return; }
     const meBox = $("#mf-me", sh);
@@ -1970,18 +2009,21 @@ document.addEventListener("click", async ev => {
   const cidOf = () => el.dataset.client || currentProject();
   const phOf = () => { const p = el.dataset.phase; if (p === undefined || p === "") return S.pview === "phase" && currentProject() && currentProject() === cidOf() ? S.phaseId : undefined; return p === "none" ? "" : p; };
   switch (a){
-    case "tab": closeModal(); go({tab:el.dataset.tab, clientId:null, workerId:null, pview:"dash", audit:false}); break;
-    case "client": closeModal(); go({tab:"clients", clientId:id, pview:"dash"}); break;
+    case "tab": closeModal(); go({tab:el.dataset.tab, clientId:null, workerId:null, pview:"dash", osub:"overview", csub:"list"}); break;
+    case "osub": go({osub:el.dataset.v}); break;
+    case "csub": go({csub:el.dataset.v, workerId:null}); break;
+    case "client": closeModal(); if (id === OFFICE) go({tab:"office", osub:"overview", clientId:null}); else go({tab:"clients", clientId:id, workerId:null, pview:"dash"}); break;
     case "back": go({clientId:null, pview:"dash"}); break;
     case "pview": go({pview:el.dataset.v}); break;
-    case "phase": { closeModal(); const ph = el.dataset.ph === "none" ? "" : el.dataset.ph; go({tab:"clients", clientId:el.dataset.client || S.clientId, pview:"phase", phaseId:ph}); break; }
-    case "worker": closeModal(); go({tab:"people", workerId:id}); break;
-    case "worker-back": go({workerId:null}); break;
+    case "phase": { closeModal(); const ph = el.dataset.ph === "none" ? "" : el.dataset.ph; go({tab:"clients", clientId:el.dataset.client || S.clientId, workerId:null, pview:"phase", phaseId:ph}); break; }
+    case "worker": closeModal(); go({tab:"clients", clientId:null, workerId:id}); break;
+    case "worker-back": go({workerId:null, csub:"workers"}); break;
     case "new-entry": chooser(); break;
     case "pay": paymentForm({clientId:cidOf()}); break;
     case "expense": expenseForm({clientId:cidOf(), kind:el.dataset.kind, phaseId:phOf()}); break;
     case "fee": feeForm({clientId:cidOf()}); break;
-    case "office-entry": entryForm({type:el.dataset.type}); break;
+    case "office-entry": entryForm({type:el.dataset.type, category:el.dataset.cat}); break;
+    case "transfer": entryForm({type:"transfer"}); break;
     case "new-request": requestForm(cidOf()); break;
     case "request": requestDetail(id); break;
     case "req-pdf": showPdf(id); break;
@@ -1994,7 +2036,7 @@ document.addEventListener("click", async ev => {
     case "req-cancel-ok": {
       const reason = $("#rq-r").value.trim(); if (!reason) { $("#rq-err").textContent = "اكتبوا سبب الإلغاء."; return; }
       const r = byId(S.requests, id), now = new Date().toISOString();
-      if (await write(() => S.db.doc("requests/"+id).update({cancelled:true, cancelReason:reason, cancelledAt:now, cancelledBy:S.me||null, history:(r.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"cancel", reason}])}))) { toast("أُلغي الطلب وبقي في السجل"); await until(() => byId(S.requests, id)?.cancelled); requestDetail(id); }
+      if (await write(() => S.db.doc("requests/"+id).update({cancelled:true, cancelReason:reason, cancelledAt:now, cancelledBy:S.me||null, history:(r.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"cancel", reason}])}))) { toast("أُلغي الطلب وبقي في السجل"); await until(() => byId(S.requests, id)?.cancelled); refreshRequest(id); }
       break; }
     case "entry": entryDetail(id); break;
     case "edit-entry": editEntry(id); break;
@@ -2003,11 +2045,11 @@ document.addEventListener("click", async ev => {
     case "void-ok": {
       const r = $("#void-r").value.trim(); if (!r) { $("#void-err").textContent = "اكتبوا سبب الإلغاء."; return; }
       const e = byId(S.entries, id); const now = new Date().toISOString();
-      if (await write(() => S.db.doc("entries/"+id).update({void:true, voidReason:r, voidAt:now, voidBy:S.me||null, history:(e.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"void", reason:r}])}))) { closeModal(); toast("أُلغيت العملية وبقيت في السجل"); }
+      if (await write(() => S.db.doc(epath(e)).update({void:true, voidReason:r, voidAt:now, voidBy:S.me||null, history:(e.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"void", reason:r}])}))) { closeModal(); toast("أُلغيت العملية وبقيت في السجل"); }
       break; }
     case "restore": {
       const e = byId(S.entries, id); const now = new Date().toISOString();
-      if (await write(() => S.db.doc("entries/"+id).update({void:false, history:(e.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"restore"}])}))) { closeModal(); toast("أُعيد تفعيل العملية"); }
+      if (await write(() => S.db.doc(epath(e)).update({void:false, history:(e.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"restore"}])}))) { closeModal(); toast("أُعيد تفعيل العملية"); }
       break; }
     case "receipt": receiptView(el.dataset.rid, el.dataset.rtype, el.dataset.eid); break;
     case "save-receipt": saveReceipt(el.dataset.rid, el.dataset.rtype); break;
@@ -2036,7 +2078,6 @@ document.addEventListener("click", async ev => {
     case "ph-add": { const n = (S.phNew||"").trim(); if (!n) { toast("اكتبوا اسم المرحلة الجديدة.", true); return; } phDraft().push({id:"p" + Math.random().toString(36).slice(2,9), name:n, hidden:false}); S.phNew = ""; draw(); break; }
     case "ph-save": savePhases(); break;
     case "ph-reset": S.phDraft = null; draw(); break;
-    case "audit": go({audit:!S.audit}); break;
     case "export": exportCsv(filtered()); break;
     case "export-client": { const c = el.dataset.client; exportCsv(sortEntries(entriesFor(c)), c); break; }
     case "copy-csv": { const t = $("#csv-t"); try { await navigator.clipboard.writeText(t.value); toast("نُسخ"); } catch(_){ t.select(); } break; }
@@ -2081,11 +2122,14 @@ async function boot(){
   const onErr = e => { if (e && (e.code === "revoked" || e.code === "not_granted")) S.readOnly = true; S.ready = true; toast("تعذّر تحميل جزء من الدفتر. أعيدوا فتح الصفحة.", true); render(); };
   const num = d => { const x = d.data(); return {id:d.id, ...x, amount:Number(x.amount)||0}; };
   const sub = (name, map) => db.collection(name).onSnapshot(s => { S[name] = s.docs.map(map || (d => ({id:d.id, ...d.data()}))); done(name); }, onErr);
-  sub("clients"); sub("members"); sub("workers"); sub("jobs"); sub("requests", num); sub("entries", num);
+  sub("clients"); sub("members"); sub("workers"); sub("jobs"); sub("requests", num);
+  const merge = () => { S.entries = S._main.concat(S._office); };
+  db.collection("entries").onSnapshot(s => { S._main = s.docs.map(num); merge(); done("entries"); }, onErr);
+  db.collection("office").onSnapshot(s => { S._office = s.docs.map(d => ({...num(d), _col:"office", clientId:OFFICE})); merge(); done("office"); }, () => done("office"));
   db.doc("settings/main").onSnapshot(s => { S.settings = s.exists ? s.data() : {}; render(); }, () => {});
   db.doc("settings/phases").onSnapshot(s => { S.phasesDoc = s.exists ? s.data() : null; render(); }, () => {});
 }
-if (window.__LEDGER_TEST__) window.__ledger = {S, projStats, clientTotals, companyTotals, reqStatus, reqPaid, jobPaid, workerStats, phaseCosts, suggestAmount, outstanding, parseNum, requestCanvas, canvasToPdf, profitCalc};
+if (window.__LEDGER_TEST__) window.__ledger = {S, homeView, projStats, clientTotals, companyTotals, reqStatus, reqPaid, jobPaid, workerStats, phaseCosts, suggestAmount, outstanding, parseNum, requestCanvas, canvasToPdf, profitCalc};
 boot();
 })();
 </script>
