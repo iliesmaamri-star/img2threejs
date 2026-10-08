@@ -1,0 +1,2135 @@
+<title>Contrast Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@600;700&display=swap">
+<style>
+/* Layout: a site ledger. Sticky header with tabs, one working column (max 1120px); cards only for summaries and sheets. */
+:root{
+  --bg:#ECEEEA; --surface:#FAFBF8; --sunk:#E1E4DF; --line:#C9CEC7; --fg:#1A201D; --muted:#5B655E;
+  --accent:#24479A; --accent-ink:#FFFFFF; --accent-soft:#DDE4F4;
+  --in:#1D7146; --in-soft:#DCEFE2; --out:#AB3327; --out-soft:#F5DFDA; --warn:#94600A; --warn-soft:#F5E9CF;
+  --shadow:0 1px 2px rgba(20,32,26,.08),0 10px 28px rgba(20,32,26,.10);
+  --scrim:rgba(18,24,21,.45);
+  --f-display:"Noto Kufi Arabic","IBM Plex Sans Arabic",Tahoma,sans-serif;
+  --f-body:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#131715; --surface:#1B201D; --sunk:#232925; --line:#343C37; --fg:#E6EBE7; --muted:#99A49C;
+  --accent:#93B0F0; --accent-ink:#0E1830; --accent-soft:#223050;
+  --in:#6CC693; --in-soft:#1A3326; --out:#EE8B7D; --out-soft:#3C221E; --warn:#E2B45C; --warn-soft:#382D17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.35); --scrim:rgba(0,0,0,.6); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#131715; --surface:#1B201D; --sunk:#232925; --line:#343C37; --fg:#E6EBE7; --muted:#99A49C;
+  --accent:#93B0F0; --accent-ink:#0E1830; --accent-soft:#223050;
+  --in:#6CC693; --in-soft:#1A3326; --out:#EE8B7D; --out-soft:#3C221E; --warn:#E2B45C; --warn-soft:#382D17;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px rgba(0,0,0,.35); --scrim:rgba(0,0,0,.6); color-scheme:dark }
+
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.6}
+#app{min-height:100%}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.35}
+.num{font-variant-numeric:tabular-nums;unicode-bidi:isolate;white-space:nowrap}
+.cur{color:var(--muted);font-size:.85em}
+.mono{font-family:var(--f-mono);font-size:.85em;unicode-bidi:isolate;white-space:nowrap}
+.muted{color:var(--muted)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:12px 0;display:flex;flex-direction:column;gap:8px}
+.brand{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap}
+.brand h1{font-size:1.15rem}
+.brand .sub{font-size:.8rem;color:var(--muted)}
+.mark{width:34px;height:34px;flex:none}
+.brand-l{display:flex;align-items:center;gap:10px;min-width:0}
+.who{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.who img{width:22px;height:22px;border-radius:50%}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:none;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:3px solid transparent;white-space:nowrap}
+.tab[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--fg)}
+
+main{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:20px 120px;display:flex;flex-direction:column;gap:22px}
+section{display:flex;flex-direction:column;gap:12px;min-width:0}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sec-h h2{font-size:1.02rem}
+.label{font-size:.74rem;letter-spacing:.02em;color:var(--muted);font-weight:600}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:500;text-decoration:none;color:var(--fg)}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.in{background:var(--in);border-color:var(--in);color:var(--surface)}
+.btn.out{background:var(--out);border-color:var(--out);color:var(--surface)}
+.btn.ghost{background:none;border-color:transparent;color:var(--accent);padding-inline:6px}
+.btn.danger{color:var(--out);border-color:var(--out)}
+.btn[disabled]{opacity:.55;cursor:wait}
+.btn svg{width:16px;height:16px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.kpi{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .v{font-size:1.35rem;font-weight:700;font-family:var(--f-body)}
+.kpi .v.in{color:var(--in)} .kpi .v.out{color:var(--out)}
+.kpi .h{font-size:.78rem;color:var(--muted)}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* alerts */
+.alert{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:8px;background:var(--warn-soft);color:var(--fg);border-inline-start:4px solid var(--warn)}
+.alert b{color:var(--warn)}
+.alert.bad{background:var(--out-soft);border-inline-start-color:var(--out)}
+.alert.bad b{color:var(--out)}
+
+/* tables */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:10px 12px;text-align:start;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:.75rem;color:var(--muted);font-weight:600;background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:end}
+tbody tr.click{cursor:pointer} tbody tr.click:hover td{background:var(--sunk)}
+.pos{color:var(--in)} .neg{color:var(--out)}
+
+.pill{display:inline-block;font-size:.72rem;padding:1px 9px;border-radius:99px;background:var(--sunk);color:var(--muted);font-weight:600;white-space:nowrap}
+.pill.active{background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--in-soft);color:var(--in)}
+.pill.paused{background:var(--warn-soft);color:var(--warn)}
+.pill.void{background:var(--out-soft);color:var(--out)}
+
+/* operations list */
+.ops{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.op{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:11px 14px;border:0;border-bottom:1px solid var(--line);background:none;text-align:start;cursor:pointer;width:100%}
+.op:last-child{border-bottom:0}
+.op:hover{background:var(--sunk)}
+.op .ic{grid-row:span 2;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:1.05rem}
+.op .ic.in{background:var(--in-soft);color:var(--in)} .op .ic.out{background:var(--out-soft);color:var(--out)} .op .ic.transfer{background:var(--accent-soft);color:var(--accent)}
+.op .t{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.op .a{font-weight:700;text-align:end}
+.op .a.in{color:var(--in)} .op .a.out{color:var(--out)} .op .a.transfer{color:var(--accent)}
+.op .s{font-size:.8rem;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.op .m{font-size:.78rem;color:var(--muted);text-align:end;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.op .m svg{width:13px;height:13px}
+.op.void .t,.op.void .a{text-decoration:line-through;opacity:.6}
+.op .rb{font-size:.75rem;color:var(--muted)}
+
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;text-align:start}
+button.card{cursor:pointer} button.card:hover{border-color:var(--muted)}
+.card h3{font-size:.98rem}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:end}
+.bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;display:flex}
+.bar span{display:block;height:100%}
+.bar .bi{background:var(--in)} .bar .bo{background:var(--out)}
+.cat-bars{display:flex;flex-direction:column;gap:8px}
+.cat-bar{display:grid;grid-template-columns:minmax(90px,150px) 1fr auto;gap:10px;align-items:center;font-size:.85rem}
+.cat-bar .track{height:10px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.cat-bar .fill{height:100%;background:var(--out);border-radius:99px}
+
+.hero{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.hero h2{font-size:1.35rem}
+.back{align-self:flex-start}
+
+/* onboarding */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;counter-reset:s}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.step .no{font-family:var(--f-display);font-size:1.6rem;color:var(--accent);line-height:1}
+.step.ok{border-color:var(--in)} .step.ok .no{color:var(--in)}
+@media (max-width:760px){.steps{grid-template-columns:1fr}}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:22px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+
+/* filters */
+.filters{display:grid;grid-template-columns:2fr repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:860px){.filters{grid-template-columns:1fr 1fr}.filters .q{grid-column:1/-1}}
+
+/* forms */
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld > span{font-size:.8rem;color:var(--muted);font-weight:600}
+input[type=text],input[type=number],input[type=tel],input[type=date],input[type=month],input[type=datetime-local],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;min-height:42px}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:520px){.f2{grid-template-columns:1fr}}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg label{display:block;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;text-align:center;padding:9px 6px;font-weight:600;color:var(--muted);border-inline-start:1px solid var(--line)}
+.seg label:first-child span{border-inline-start:0}
+.seg input:checked + span.in{background:var(--in);color:var(--surface)}
+.seg input:checked + span.out{background:var(--out);color:var(--surface)}
+.seg input:checked + span.transfer{background:var(--accent);color:var(--accent-ink)}
+.seg input:focus-visible + span{outline:2px solid var(--accent);outline-offset:-3px}
+.amt-in{font-size:1.4rem;font-weight:700;text-align:start}
+.stamp{font-size:.8rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+.err{color:var(--out);font-size:.85rem;min-height:1.2em}
+
+/* receipts */
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumb{position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--sunk);display:grid;place-items:center;cursor:pointer;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb .pdf{font-family:var(--f-mono);font-weight:500;color:var(--out)}
+.thumb .x{position:absolute;top:3px;inset-inline-end:3px;width:22px;height:22px;border-radius:50%;border:0;background:var(--scrim);color:#fff;cursor:pointer;line-height:1}
+.drop{border:1px dashed var(--line);border-radius:9px;padding:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.drop input[type=file]{display:none}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:50;display:flex;align-items:flex-end;justify-content:center;padding-top:env(safe-area-inset-top,0px)}
+.sheet{background:var(--surface);width:100%;max-width:620px;max-height:92vh;overflow:auto;border-radius:14px 14px 0 0;box-shadow:var(--shadow);padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+@media (min-width:700px){.scrim{align-items:center}.sheet{border-radius:14px;max-height:88vh}}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sheet-h h2{font-size:1.1rem}
+.x-btn{border:0;background:var(--sunk);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:1.1rem}
+.sheet .foot{display:flex;gap:8px;justify-content:flex-start;flex-wrap:wrap;position:sticky;bottom:calc(-18px - env(safe-area-inset-bottom,0px));background:var(--surface);padding-block:10px;margin-bottom:-10px;border-top:1px solid var(--line)}
+.lb{max-width:960px}
+.lb img{width:100%;height:auto;border-radius:8px;background:var(--sunk)}
+.lb iframe{width:100%;height:70vh;border:1px solid var(--line);border-radius:8px;background:#fff}
+.hist{font-size:.82rem;color:var(--muted);display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:10px}
+
+.fab{position:fixed;inset-inline-end:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:30;border:0;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:700;padding:14px 20px;box-shadow:var(--shadow);cursor:pointer;display:flex;gap:8px;align-items:center;font-size:1rem}
+.fab svg{width:20px;height:20px}
+.toast{position:fixed;inset-inline-start:50%;transform:translateX(50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:8px;box-shadow:var(--shadow);font-weight:500;max-width:calc(100% - 32px)}
+.toast.bad{background:var(--out);color:var(--surface)}
+.notice{background:var(--accent-soft);border-radius:8px;padding:10px 14px;font-size:.9rem}
+.skel{height:84px;border-radius:var(--r);background:linear-gradient(90deg,var(--sunk),var(--surface),var(--sunk));background-size:200% 100%;animation:sh 1.4s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+.split{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:22px}
+@media (max-width:900px){.split{grid-template-columns:1fr}}
+.hold{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.hold div{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.hold div:last-child{border-bottom:0}
+.hold .tot{background:var(--sunk);font-weight:700}
+/* project account */
+.pbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr-h,112px));z-index:15;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:6px 14px;flex-wrap:wrap;box-shadow:var(--shadow)}
+.pbar .pn{display:flex;flex-direction:column;min-width:0}
+.pbar .pn b{font-family:var(--f-display);font-size:.98rem}
+.pbar .pn span{font-size:.8rem;color:var(--muted)}
+.pbar .pv{display:flex;align-items:center;gap:8px;font-weight:700;flex-wrap:wrap}
+.pill.low{background:var(--out-soft);color:var(--out)}
+.pill.ok{background:var(--in-soft);color:var(--in)}
+.lastpay{font-size:.88rem;color:var(--muted)}
+.lastpay b{color:var(--fg)}
+.qa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.qa{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.qa .btn{justify-content:center;padding:12px 8px;text-align:center}
+.qa.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.balbar{position:relative;height:14px;border-radius:99px;background:var(--sunk)}
+.balbar .f{display:block;height:100%;border-radius:99px;background:var(--in)}
+.balbar.low .f{background:var(--out)}
+.balbar .thr{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--warn)}
+.balcap{display:flex;justify-content:space-between;gap:10px;font-size:.78rem;color:var(--muted)}
+.alert.low{flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
+.alert.low .low-b{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1 1 260px}
+.alert.low .low-t{font-size:1.05rem}
+.alert .kv{font-size:.88rem}
+.phases{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.ph{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(60px,22%) auto;gap:10px;align-items:center;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:none;cursor:pointer;text-align:start;width:100%}
+.ph:last-child{border-bottom:0}
+.ph:hover{background:var(--sunk)}
+.ph-no{font-family:var(--f-display);color:var(--accent);font-size:.9rem}
+.ph.zero .ph-n,.ph.zero .ph-v{color:var(--muted)}
+.ph-bar{height:6px;background:var(--sunk);border-radius:99px;overflow:hidden;display:block}
+.ph-bar span{display:block;height:100%;background:var(--out)}
+.ph-v{font-weight:600;text-align:end}
+@media (max-width:560px){.ph{grid-template-columns:24px minmax(0,1fr) auto}.ph-bar{display:none}}
+.tl{display:flex;flex-direction:column;gap:14px}
+.day{display:flex;flex-direction:column;gap:6px}
+.day-h{font-size:.8rem;font-weight:600;color:var(--muted)}
+details.more{border:1px solid var(--line);border-radius:9px;padding-inline:12px}
+details.more>summary{cursor:pointer;padding-block:10px;color:var(--accent);font-weight:600;list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"+ "}
+details.more[open]>summary::before{content:"− "}
+details.more[open]{padding-bottom:12px}
+details.more .inner{display:flex;flex-direction:column;gap:10px}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:0;background:var(--sunk);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.calc div{background:var(--sunk);box-shadow:0 0 0 .5px var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:var(--muted)}
+.calc b{color:var(--fg);font-size:.95rem}
+.calc .hl b{color:var(--accent)}
+.chooser{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ch{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:14px;text-align:start;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.ch:hover{border-color:var(--muted)}
+.ch b{font-size:1rem}
+.ch.in b{color:var(--in)} .ch.out b{color:var(--out)} .ch.acc b{color:var(--accent)}
+.ch span{font-size:.8rem;color:var(--muted)}
+@media (max-width:420px){.chooser{grid-template-columns:1fr}}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.gi{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:start;min-width:0}
+.gi .im{aspect-ratio:1/1;background:var(--sunk);display:grid;place-items:center;max-width:100%;overflow:hidden}
+.gi .im img{width:100%;height:100%;object-fit:cover}
+.gi .cap{padding:8px 10px;font-size:.78rem;display:flex;flex-direction:column;gap:2px;min-width:0}
+.gi .cap span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill.st-sent{background:var(--accent-soft);color:var(--accent)}
+.pill.st-unpaid{background:var(--out-soft);color:var(--out)}
+.pill.st-partial{background:var(--warn-soft);color:var(--warn)}
+.pill.st-paid{background:var(--in-soft);color:var(--in)}
+.pill.st-cancelled{text-decoration:line-through}
+.fixed-c{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;padding:8px 12px;background:var(--sunk);border-radius:8px}
+.pdfprev img{width:100%;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.phed{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto auto;gap:6px;align-items:center}
+.phed.off input{color:var(--muted);text-decoration:line-through}
+.phed .btn{padding:6px 10px}
+.logo-prev{width:64px;height:64px;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:var(--surface)}
+.tabs2{display:flex;gap:6px;flex-wrap:wrap}
+.subnav{display:flex;gap:6px;flex-wrap:wrap}
+.subnav .btn[aria-current="page"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.studio{gap:4px}
+.studio-n{font-family:var(--f-body);font-weight:700;font-size:clamp(1.9rem,6vw,3rem);letter-spacing:-.01em;line-height:1.1}
+.studio p{margin:0}
+.doors{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.doors{grid-template-columns:1fr}}
+.door{display:flex;flex-direction:column;gap:12px;text-align:start;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;cursor:pointer;min-width:0;color:var(--fg)}
+.door:hover{border-color:var(--fg)}
+.door h2{font-size:1.3rem}
+.door .kv{font-size:.95rem}
+.door .go{font-weight:700;margin-top:auto}
+.door.inv{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.door.inv .label,.door.inv .kv dt,.door.inv .cur,.door.inv p{color:inherit;opacity:.72}
+.door.inv:hover{border-color:var(--accent)}
+.door.locked{cursor:default}
+.door p{margin:0}
+</style>
+
+<div id="app" dir="rtl" lang="ar">
+  <header class="top"><div class="top-in" id="hdr"></div></header>
+  <main id="main">
+    <section><div class="skel"></div><div class="skel"></div></section>
+  </main>
+  <button class="fab" id="fab" data-act="new-entry" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    عملية جديدة
+  </button>
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+document.documentElement.lang = "ar";
+
+/* ---------- constants ---------- */
+const pad = n => String(n).padStart(2,"0");
+const OFFICE = "_office";
+const CAT = {
+  in: [["advance","دفعة مسبقة"],["installment","دفعة مرحلية"],["final","الدفعة النهائية"],["extra","أشغال إضافية"],["other_in","دخل آخر"]],
+  out: [["materials","مواد البناء"],["labor","أجور العمال"],["subcontract","مقاول من الباطن"],["equipment","كراء معدات وآلات"],["transport","نقل وشحن"],["fuel","وقود"],["permits","وثائق ورخص"],["office","مصاريف المكتب"],["draw","سحب أرباح شريك"],["other_out","مصروف آخر"]],
+};
+const OFFICE_OUT = [["office","مصاريف المكتب (كراء، كهرباء، هاتف…)"],["draw","سحب أرباح شريك"],["transport","نقل وتنقلات"],["fuel","وقود"],["permits","وثائق ورخص"],["equipment","معدات وأدوات"],["other_out","مصروف آخر"]];
+const OFFICE_IN = [["other_in","دخل للمكتب"]];
+const CAT_LABEL = Object.fromEntries([...CAT.in, ...CAT.out, ["transfer","تحويل بين الأعضاء"], ["fee","أتعاب المكتب"]]);
+const METHODS = [["cash","نقدا (Cash)"],["bank","تحويل بنكي"],["cheque","شيك"],["ccp","CCP / BaridiMob"],["other","أخرى"]];
+const METHOD_LABEL = Object.fromEntries([...METHODS, ["card","بطاقة"]]);
+const KIND = {partner:"شريك", member:"عضو", account:"صندوق / حساب بنكي"};
+const STATUS = {active:"قيد الإنجاز", done:"منتهي", paused:"متوقف"};
+const TYPE_LABEL = {in:"دخل", out:"مصروف", transfer:"تحويل", fee:"أتعاب"};
+const XKIND = {material:"المواد والمشتريات", labor:"اليد العاملة", other:"مصاريف أخرى"};
+const FEES = [["office","أتعاب المكتب · Office Fee"],["study","أتعاب الدراسة · Study Fee"],["supervision","أتعاب المتابعة · Supervision Fee"],["management","أتعاب التسيير · Management Fee"],["other","أتعاب أخرى"]];
+const FEE_LABEL = Object.fromEntries(FEES);
+const DEFAULT_PHASES = ["تهيئة الورشة والحفر","الأساسات","الهيكل الخرساني","البناء بالطوب","الكهرباء","السباكة والصرف","التلييس والعزل","الأرضيات والتبليط","الجبس والأسقف","النجارة والألمنيوم والزجاج","الدهان","التكييف والتجهيزات","الواجهات والأعمال الخارجية","التشطيبات النهائية والتسليم"].map((name,i) => ({id:"p"+pad(i+1), name}));
+const UNITS = ["قضيب","كيس","m³","m²","m","طن","kg","وحدة","شاحنة","لتر","علبة","يوم"];
+const SPECIALTIES = ["بنّاء","حداد","نجار خرسانة","كهربائي","سبّاك","مبلّط","جبّاس","دهّان","نجار ألمنيوم","عامل","سائق","مقاول من الباطن"];
+const REQ = {draft:["مسودة","Draft"], sent:["مُرسل","Sent"], unpaid:["غير مدفوع","Unpaid"], partial:["مدفوع جزئيا","Partially Paid"], paid:["مدفوع","Paid"], cancelled:["ملغى","Cancelled"]};
+const DEFAULT_REASON = "Versement pour poursuite des travaux.";
+const TABS = [["home","الرئيسية"],["office","المكتب"],["clients","الزبائن"]];
+const BRAND = "Contrast Studio";
+const ICON_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.5 8.5a5 5 0 01-7-7L14 5.5a3.4 3.4 0 014.8 4.8l-8.4 8.4a1.7 1.7 0 01-2.4-2.4L15.5 8.8"/></svg>';
+const TAB_ID = Math.random().toString(36).slice(2);
+const AUDIT_KEYS = ["type","amount","at","clientId","phaseId","kind","category","item","desc","qty","unit","unitPrice","supplier","workerId","jobId","requestId","feeKind","memberId","fromId","toId","beneficiaryId","method","ref","note"];
+const KEY_LABEL = {amount:"المبلغ",at:"التاريخ والساعة",clientId:"المشروع",phaseId:"المرحلة",kind:"نوع المصروف",category:"الصنف",item:"البيان",desc:"الوصف",qty:"الكمية",unit:"الوحدة",unitPrice:"سعر الوحدة",supplier:"المورد",workerId:"العامل",jobId:"العمل",requestId:"طلب الدفع",feeKind:"نوع الأتعاب",memberId:"العضو",fromId:"من",toId:"إلى",beneficiaryId:"الشريك",method:"طريقة الدفع",ref:"المرجع",note:"الملاحظة",type:"النوع",reason:"السبب",notes:"الملاحظات",date:"التاريخ",due:"تاريخ الاستحقاق",agreed:"المبلغ المتفق عليه",name:"الاسم",specialty:"التخصص",phone:"الهاتف",project:"المشروع",location:"الموقع",contract:"قيمة العقد",status:"الحالة",lowPct:"حد التنبيه",startDate:"بداية الأشغال"};
+
+/* ---------- state ---------- */
+const S = {
+  ready:false, noDb:false, db:null, user:null, assets:null,
+  clients:[], entries:[], members:[], workers:[], jobs:[], requests:[], settings:{}, phasesDoc:null,
+  loaded:{clients:false, entries:false, office:false, members:false, workers:false, jobs:false, requests:false},
+  me:null, meProfile:null, readOnly:false, canEdit:false, prof:{}, profAsked:new Set(),
+  tab:"home", osub:"overview", csub:"list", clientId:null, pview:"dash", phaseId:"", workerId:null, cq:"", _main:[], _office:[],
+  f:{q:"", type:"", client:"", member:"", month:""},
+  setDraft:null, phDraft:null, phNew:"",
+};
+try{ const t = localStorage.getItem("ledger.tab"); if (t && TABS.some(x=>x[0]===t)) S.tab = t; }catch(_){}
+
+/* ---------- helpers ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:0, maximumFractionDigits:2});
+const nf2 = new Intl.NumberFormat("fr-FR", {minimumFractionDigits:2, maximumFractionDigits:2});
+const cur = () => S.settings.currency || "دج";
+const curCode = () => S.settings.currencyCode || "DZD";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+/* wait until a saved change is visible in the live data (own writes arrive through the subscription) */
+async function until(fn, ms=4000){ const t0 = Date.now(); while (!fn() && Date.now() - t0 < ms) await sleep(50); return !!fn(); }
+const useCap = n => (window.claude && window.claude.use) ? window.claude.use(n).catch(()=>null) : Promise.resolve(null);
+function money(n, sign){
+  const v = Number(n)||0;
+  let s = nf.format(Math.abs(v));
+  if (sign === "in") s = "+" + s; else if (sign === "out") s = "−" + s; else if (v < 0) s = "−" + s;
+  return `<span class="num" dir="ltr">${s}</span> <span class="cur">${esc(cur())}</span>`;
+}
+const pctTxt = p => p == null ? "—" : nf.format(Math.round(p*10)/10) + "%";
+function fmtD(iso){ if(!iso) return ""; const d = new Date(iso); if (isNaN(d)) return ""; return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`; }
+function fmtT(iso){ if(!iso) return ""; const d = new Date(iso); if (isNaN(d)) return ""; return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+const fmtDT = iso => iso ? `${fmtD(iso)} ${fmtT(iso)}` : "";
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const todayStr = () => ymd(new Date());
+const ymdToFr = s => s ? s.split("-").reverse().join("/") : "";
+const dt = iso => `<span class="mono" dir="ltr">${esc(fmtDT(iso))}</span>`;
+const tm = iso => `<span class="mono" dir="ltr">${esc(fmtT(iso))}</span>`;
+let dayFmt; try { dayFmt = new Intl.DateTimeFormat("ar-DZ", {weekday:"long"}); } catch(_){ dayFmt = null; }
+const dayName = iso => { try { return dayFmt ? dayFmt.format(new Date(iso)) : ""; } catch(_){ return ""; } };
+function parseNum(s){
+  let t = String(s ?? "").trim().replace(/[\s  ]/g,"").replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+  if (!t) return NaN;
+  const lc = t.lastIndexOf(","), ld = t.lastIndexOf(".");
+  if (lc >= 0 && ld >= 0){ const dec = lc > ld ? "," : "."; const th = dec === "," ? "." : ","; t = t.split(th).join("").replace(dec, "."); }
+  else if (lc >= 0 || ld >= 0){
+    const parts = t.split(lc >= 0 ? "," : ".");
+    const last = parts[parts.length-1];
+    t = (parts.length > 2 || (last.length === 3 && !/^-?0$/.test(parts[0]))) ? parts.join("") : parts.join(".");
+  }
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return NaN;
+  return Math.round(Number(t)*100)/100;
+}
+const byId = (list, id) => list.find(x => x.id === id);
+const clientName = id => id === OFFICE ? "حساب المكتب" : (byId(S.clients,id)?.name || "زبون محذوف");
+const memberName = id => id ? (byId(S.members,id)?.name || "عضو محذوف") : "غير محدد";
+const workerName = id => byId(S.workers,id)?.name || "عامل محذوف";
+const personName = uid => (uid && S.prof[uid] && S.prof[uid].name) || "أحد الأعضاء";
+const myMember = () => S.me ? S.members.find(m => m.userId === S.me) : null;
+const active = () => S.entries.filter(e => !e.void);
+const reqNo = r => r ? String(r.no || 0).padStart(3,"0") : "";
+function sortEntries(list){ return list.slice().sort((a,b) => (b.at||"").localeCompare(a.at||"") || (b.createdAt||"").localeCompare(a.createdAt||"")); }
+const strip = o => { const c = {...o}; delete c.id; delete c._col; return c; };
+/* office transactions live in their own collection that only the partners (editors) can read */
+const epath = e => `${e._col || "entries"}/${e.id}`;
+
+/* ---------- phases ---------- */
+function phaseList(){ const l = S.phasesDoc && Array.isArray(S.phasesDoc.list) && S.phasesDoc.list.length ? S.phasesDoc.list : DEFAULT_PHASES; return l; }
+const activePhases = () => phaseList().filter(p => !p.hidden);
+const phaseName = id => !id ? "بدون مرحلة" : (phaseList().find(p => p.id === id)?.name || "مرحلة محذوفة");
+
+/* ---------- money calculations (all derived from transactions, never stored) ---------- */
+const kindOf = e => e.kind || ({materials:"material", labor:"labor", subcontract:"labor"}[e.category] || "other");
+const entriesFor = cid => cid === OFFICE ? S.entries.filter(e => e.clientId === OFFICE || e.type === "fee") : S.entries.filter(e => e.clientId === cid);
+function delta(e, cid){
+  if (e.void) return 0;
+  if (e.type === "in") return e.amount;
+  if (e.type === "out") return -e.amount;
+  if (e.type === "fee") return cid === OFFICE ? e.amount : -e.amount;
+  return 0;
+}
+function clientTotals(cid){
+  let i = 0, o = 0;
+  for (const e of entriesFor(cid)){ const d = delta(e, cid); if (d > 0) i += d; else o -= d; }
+  return {i, o, b:i-o};
+}
+function companyTotals(){ let i=0,o=0; for (const e of active()){ if (e.type==="in") i+=e.amount; else if (e.type==="out") o+=e.amount; } return {i, o, b:i-o}; }
+function lowPctFor(c){ const v = c && c.lowPct != null && c.lowPct !== "" ? Number(c.lowPct) : Number(S.settings.lowPct ?? 10); return isFinite(v) ? v : 10; }
+function projStats(cid){
+  const c = byId(S.clients, cid) || {};
+  let paid = 0, spent = 0, fees = 0, last = null, n = 0;
+  const k = {material:0, labor:0, other:0};
+  for (const e of S.entries){
+    if (e.void || e.clientId !== cid) continue;
+    n++;
+    if (e.type === "in"){ paid += e.amount; if (!last || (e.at||"") > (last.at||"")) last = e; }
+    else if (e.type === "out"){ spent += e.amount; k[kindOf(e)] += e.amount; }
+    else if (e.type === "fee") fees += e.amount;
+  }
+  const out = spent + fees, bal = paid - out;
+  const pct = paid > 0 ? bal / paid * 100 : null;
+  const thr = lowPctFor(c);
+  const low = (paid > 0 && pct <= thr) || bal < 0;
+  const contract = Number(c.contract) || 0;
+  return {paid, spent, fees, out, bal, pct, thr, low, last, k, n, contract, remaining: contract ? Math.max(contract - paid, 0) : 0};
+}
+function reqPaid(rid){ let p = 0; for (const e of S.entries) if (!e.void && e.type === "in" && e.requestId === rid) p += e.amount; return p; }
+function reqStatus(r){
+  if (r.cancelled) return "cancelled";
+  const p = reqPaid(r.id);
+  if (p >= r.amount - 0.005) return "paid";
+  if (p > 0) return "partial";
+  if (!r.sentAt) return "draft";
+  if (r.due && todayStr() > r.due) return "unpaid";
+  return "sent";
+}
+const isOpen = r => !["paid","cancelled"].includes(reqStatus(r));
+const openRequests = cid => S.requests.filter(r => r.clientId === cid && isOpen(r)).sort((a,b) => (a.no||0) - (b.no||0));
+const outstanding = cid => openRequests(cid).reduce((s,r) => s + Math.max(r.amount - reqPaid(r.id), 0), 0);
+function suggestAmount(cid){
+  const st = projStats(cid);
+  const base = st.last ? st.last.amount : (st.contract ? st.contract * 0.2 : 0);
+  let s = base - st.bal;
+  if (st.contract && st.remaining > 0) s = Math.min(s, st.remaining);
+  if (!(s > 0)) return 0;
+  return Math.ceil(s / 10000) * 10000;
+}
+function phaseCosts(cid){
+  const m = {};
+  for (const e of S.entries){
+    if (e.void || e.clientId !== cid || e.type !== "out") continue;
+    const k = e.phaseId || "";
+    const r = m[k] || (m[k] = {material:0, labor:0, other:0, total:0, n:0});
+    r[kindOf(e)] += e.amount; r.total += e.amount; r.n++;
+  }
+  return m;
+}
+const jobKey = (cid, ph, wid) => `${cid}__${ph || "none"}__${wid}`;
+function jobPaid(jid, exceptId){ let p = 0; for (const e of S.entries) if (!e.void && e.type === "out" && e.jobId === jid && e.id !== exceptId) p += e.amount; return p; }
+function workerStats(wid){
+  const jobs = S.jobs.filter(j => j.workerId === wid);
+  let due = 0, rem = 0, paid = 0;
+  for (const j of jobs){ const a = Number(j.agreed) || 0; due += a; if (a) rem += Math.max(a - jobPaid(j.id), 0); }
+  const pays = S.entries.filter(e => e.type === "out" && e.workerId === wid);
+  for (const e of pays) if (!e.void) paid += e.amount;
+  const projects = [...new Set([...jobs.map(j => j.clientId), ...pays.map(e => e.clientId)])];
+  return {jobs, due, paid, rem, pays, projects};
+}
+function holdings(){
+  const h = {};
+  const add = (k,v) => { h[k||""] = (h[k||""]||0) + v; };
+  for (const e of active()){
+    if (e.type==="in") add(e.memberId, e.amount);
+    else if (e.type==="out") add(e.memberId, -e.amount);
+    else if (e.type==="transfer"){ add(e.fromId, -e.amount); add(e.toId, e.amount); }
+  }
+  return h;
+}
+function diff(old, next, keys){
+  const prev = {};
+  for (const k of keys){ const a = old[k] ?? "", b = next[k] ?? ""; if (k in next && String(a) !== String(b)) prev[k] = a; }
+  return prev;
+}
+
+/* ---------- feedback ---------- */
+let toastT;
+function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = "toast" + (bad?" bad":""); t.hidden = false; clearTimeout(toastT); toastT = setTimeout(()=>{ t.hidden = true; }, bad?5000:2600); }
+function errMsg(e){
+  const c = e && e.code;
+  if (c === "quota_exceeded" || c === "quota_or_state") return "امتلأت مساحة التخزين. احذفوا ملفات قديمة ثم أعيدوا المحاولة.";
+  if (c === "invalid_argument") return "لا تملك صلاحية هذا التعديل. اطلب من صاحب الدفتر الصلاحية المناسبة.";
+  if (c === "too_large") return "الملف أكبر من 20 ميغابايت. صوّروا الفاتورة بدقة أقل.";
+  if (c === "unsupported_type") return "نوع الملف غير مقبول. استعملوا صورة JPG أو PNG أو ملف PDF.";
+  if (c === "rate_limited" || c === "resource_exhausted") return "طلبات كثيرة في وقت قصير. انتظروا قليلا ثم أعيدوا المحاولة.";
+  if (c === "not_granted" || c === "revoked") return "لم يعد لديك وصول للحفظ في هذا الدفتر.";
+  if (c === "busy") return "عضو آخر يُصدر طلب دفع الآن. أعيدوا المحاولة بعد ثوانٍ.";
+  return "تعذّر الحفظ. تحقّقوا من الاتصال ثم أعيدوا المحاولة.";
+}
+async function write(fn){
+  try { await fn(); return true; }
+  catch(e){
+    if (e && e.code === "unavailable"){ await sleep(600+Math.random()*600); try { await fn(); return true; } catch(e2){ toast(errMsg(e2), true); return false; } }
+    toast(errMsg(e), true); return false;
+  }
+}
+
+/* ---------- rendering ---------- */
+let raf = 0;
+function render(){ if (raf) return; raf = requestAnimationFrame(()=>{ raf = 0; draw(); }); }
+function draw(){
+  const a = document.activeElement, aid = a && a.id && $("#main").contains(a) ? a.id : null;
+  let ss=null, se=null; try { if (aid){ ss = a.selectionStart; se = a.selectionEnd; } } catch(_){}
+  $("#hdr").innerHTML = header();
+  $("#main").innerHTML = view();
+  $("#fab").hidden = !(S.ready && S.db && !S.readOnly);
+  if (aid){ const el = document.getElementById(aid); if (el){ el.focus(); try { if (ss!=null) el.setSelectionRange(ss, se); } catch(_){} } }
+  resolveProfiles();
+}
+function go(patch){ Object.assign(S, patch); try{ localStorage.setItem("ledger.tab", S.tab); }catch(_){} draw(); window.scrollTo(0,0); }
+
+function header(){
+  const co = S.settings.company || BRAND;
+  const mm = myMember();
+  const role = S.readOnly ? "اطّلاع فقط" : S.canEdit ? "شريك · محرّر" : "مساهم";
+  const who = S.meProfile ? `<span class="who"><img src="${esc(S.meProfile.avatarUrl)}" alt=""><span>${esc(S.meProfile.name || "أنت")}${mm ? " · " + esc(mm.name) : ""} · ${role}</span></span>` : "";
+  const tabs = TABS.filter(([k]) => k !== "office" || S.canEdit);
+  return `<div class="brand">
+    <div class="brand-l">
+      <svg class="mark" viewBox="0 0 34 34" aria-hidden="true"><rect x="1" y="1" width="32" height="32" rx="7" fill="var(--fg)"/><path d="M17 6a11 11 0 0 0 0 22z" fill="var(--bg)"/><circle cx="17" cy="17" r="11" fill="none" stroke="var(--bg)" stroke-width="2.2"/></svg>
+      <div><h1>${esc(co)}</h1><div class="sub">حسابات المكتب والزبائن</div></div>
+    </div>${who}</div>
+    <nav class="tabs" aria-label="الأقسام">${tabs.map(([k,l]) => `<button class="tab" data-act="tab" data-tab="${k}" ${S.tab===k?'aria-current="page"':""}>${l}</button>`).join("")}</nav>`;
+}
+
+function view(){
+  if (S.noDb) return `<section><div class="empty"><h2>الدفتر غير متصل بالتخزين</h2><p>افتحوا هذه الصفحة من حسابكم على claude.ai مع تسجيل الدخول، حتى تُحفظ العمليات وتظهر لكل أعضاء المكتب.</p></div></section>`;
+  if (!S.ready) return `<section><div class="skel"></div><div class="skel"></div><p class="muted">جارٍ تحميل الدفتر…</p></section>`;
+  if (S.tab === "office"){
+    if (!S.canEdit) return lockedOffice();
+    const sub = S.osub === "team" ? teamView() : S.osub === "audit" ? auditView() : S.osub === "settings" ? settingsView() : officeView();
+    return subNav("osub", S.osub, [["overview","حسابات المكتب"],["team","الشركاء والأعضاء"],["audit","سجل التدقيق"],["settings","الإعدادات"]]) + sub;
+  }
+  if (S.tab === "clients"){
+    if (S.clientId) return projectView(S.clientId);
+    if (S.workerId) return workerView(S.workerId);
+    const sub = S.csub === "workers" ? workersListView() : S.csub === "ops" ? opsView() : clientsView();
+    return subNav("csub", S.csub, [["list","ملفات الزبائن"],["workers","العمال والحرفيون"],["ops","سجل عمليات الزبائن"]]) + sub;
+  }
+  return homeView();
+}
+const subNav = (act, cur, items) => `<nav class="subnav" aria-label="أقسام فرعية">${items.map(([k,l]) => `<button class="btn" data-act="${act}" data-v="${k}" ${cur===k?'aria-current="page"':""}>${l}</button>`).join("")}</nav>`;
+const lockedOffice = () => `<section><div class="empty"><h2>حسابات المكتب خاصة بالشريكين</h2><p>يفتح هذا القسم لمن لديه صلاحية «محرّر» على الدفتر. اطلبوها من صاحب الدفتر.</p><button class="btn" data-act="tab" data-tab="home">رجوع للرئيسية</button></div></section>`;
+
+/* one transaction row, used everywhere */
+function opTitle(e){
+  const t = e.type;
+  if (t === "transfer") return `تحويل: ${esc(memberName(e.fromId))} ← ${esc(memberName(e.toId))}`;
+  if (t === "fee") return `${esc(FEE_LABEL[e.feeKind] || "أتعاب المكتب")} · من ${esc(clientName(e.clientId))} إلى حساب المكتب`;
+  if (t === "in"){
+    if (e.clientId === OFFICE) return esc(CAT_LABEL[e.category] && e.category !== "other_in" ? CAT_LABEL[e.category] : "دخل للمكتب");
+    const r = e.requestId && byId(S.requests, e.requestId);
+    return `دفعة من الزبون${r ? ` · طلب N°${esc(reqNo(r))}` : ""}`;
+  }
+  if (e.clientId === OFFICE) return esc(CAT_LABEL[e.category] || "مصروف المكتب");
+  const k = kindOf(e);
+  if (k === "labor" && e.workerId){ const w = byId(S.workers, e.workerId); return `دفع لـ ${esc(w ? w.name : "عامل")}${w && w.specialty ? ` (${esc(w.specialty)})` : ""}`; }
+  if (k === "material"){
+    const q = e.qty ? ` · ${nf.format(e.qty)} ${esc(e.unit||"")}${e.unitPrice ? ` × ${nf.format(e.unitPrice)}` : ""}` : "";
+    return `${esc(e.item || e.supplier || CAT_LABEL[e.category] || "مواد")}${q}`;
+  }
+  return esc(e.item || CAT_LABEL[e.category] || "مصروف");
+}
+function opRow(e, o={}){
+  const t = e.type;
+  const sign = t === "transfer" ? null : t === "fee" ? (o.ctx === OFFICE ? "in" : "out") : t;
+  const ic = sign === "in" ? "+" : sign === "out" ? "−" : "⇄";
+  const cls = sign || "transfer";
+  const bits = [];
+  if (!o.ctx && t !== "transfer" && t !== "fee") bits.push(esc(clientName(e.clientId)));
+  if (t === "out" && e.clientId !== OFFICE) bits.push(esc(phaseName(e.phaseId)));
+  if (e.category === "draw" && e.beneficiaryId) bits.push("لفائدة " + esc(memberName(e.beneficiaryId)));
+  if (e.supplier && (e.item || kindOf(e) !== "material")) bits.push(esc(e.supplier));
+  if (e.note) bits.push(esc(e.note));
+  if (e.memberId) bits.push((t==="in" ? "استلمها: " : "دفعها: ") + esc(memberName(e.memberId)));
+  bits.push("سجّلها: " + esc(personName(e.createdBy)));
+  const n = (e.receipts||[]).length;
+  return `<button class="op ${e.void?"void":""}" data-act="entry" data-id="${esc(e.id)}">
+    <span class="ic ${cls}" aria-hidden="true">${ic}</span>
+    <span class="t">${opTitle(e)}${e.void ? ' <span class="pill void">ملغاة</span>' : ""}</span>
+    <span class="a ${cls}">${money(e.amount, sign)}</span>
+    <span class="s">${bits.join(" · ")}</span>
+    <span class="m">${n ? `<span title="مرفقات">${ICON_CLIP}${n}</span>` : ""}${o.timeOnly ? tm(e.at) : dt(e.at)}</span>
+    ${o.extra || ""}
+  </button>`;
+}
+function timeline(list, o={}){
+  if (!list.length) return `<div class="empty">${o.empty || "لا توجد عمليات بعد."}</div>`;
+  const groups = []; let g = null;
+  for (const e of sortEntries(list)){ const k = fmtD(e.at); if (!g || g.k !== k){ g = {k, iso:e.at, items:[]}; groups.push(g); } g.items.push(e); }
+  return `<div class="tl">${groups.map(g => `<div class="day"><span class="day-h">${esc(dayName(g.iso))} <span class="mono" dir="ltr">${g.k}</span></span><div class="ops">${g.items.map(e => opRow(e, {ctx:o.ctx, timeOnly:true, extra: o.rb ? `<span class="rb" style="grid-column:2/-1">الرصيد بعدها: ${money(o.rb[e.id])}</span>` : ""})).join("")}</div></div>`).join("")}</div>`;
+}
+function runningBalance(cid){
+  const asc = entriesFor(cid).slice().sort((a,b) => (a.at||"").localeCompare(b.at||"") || (a.createdAt||"").localeCompare(b.createdAt||""));
+  const rb = {}; let run = 0;
+  for (const e of asc){ run += delta(e, cid); rb[e.id] = run; }
+  return rb;
+}
+
+/* ---------- home ---------- */
+function homeView(){
+  const admin = S.canEdit;
+  let clientFunds = 0, remaining = 0, activeN = 0;
+  for (const c of S.clients){ const st = projStats(c.id); clientFunds += st.bal; if (c.status !== "paused") remaining += st.remaining; if (c.status !== "done") activeN++; }
+  const lows = S.clients.filter(c => c.status !== "done").map(c => ({c, st:projStats(c.id)})).filter(x => x.st.low);
+  const off = clientTotals(OFFICE), p = profitCalc();
+  const drawn = Object.values(p.draws).reduce((a,b) => a+b, 0);
+  let html = `<section class="studio"><h2 class="studio-n">${esc(S.settings.company || BRAND)}</h2><p class="muted">اختاروا القسم: حسابات المكتب للشريكين، أو ملفات الزبائن ومشاريعهم.</p></section>`;
+  html += `<section class="doors">
+    ${admin ? `<button class="door inv" data-act="tab" data-tab="office">
+      <span class="label">المكتب · OFFICE</span><h2>حسابات المكتب والشريكين</h2>
+      <dl class="kv"><dt>رصيد المكتب</dt><dd><b>${money(off.b)}</b></dd><dt>الربح القابل للتوزيع</dt><dd>${money(p.dist)}</dd><dt>سحوبات الشريكين</dt><dd>${money(drawn)}</dd><dt>نسبة كل شريك</dt><dd>${S.members.filter(m=>m.kind==="partner").map(m => `${esc(m.name)} ${nf.format(p.share[m.id]||0)}%`).join(" · ") || "50% · 50%"}</dd></dl>
+      <span class="go">دخول المكتب ←</span></button>`
+    : `<div class="door inv locked"><span class="label">المكتب · OFFICE</span><h2>حسابات المكتب والشريكين</h2><p>خاص بالشريكين. يفتح لمن لديه صلاحية «محرّر».</p></div>`}
+    <button class="door" data-act="tab" data-tab="clients">
+      <span class="label">الزبائن · CLIENTS</span><h2>مداخيل ومصاريف الزبائن</h2>
+      <dl class="kv"><dt>أموال الزبائن في المشاريع</dt><dd><b class="${clientFunds<0?"neg":""}">${money(clientFunds)}</b></dd><dt>مشاريع جارية</dt><dd>${activeN}</dd><dt>متبقٍّ للتحصيل</dt><dd>${money(remaining)}</dd><dt>تنبيهات الرصيد</dt><dd>${lows.length ? `<span class="pill low">${lows.length} منخفض</span>` : "لا توجد"}</dd></dl>
+      <span class="go">ملفات الزبائن ←</span></button>
+  </section>`;
+  if (lows.length){
+    html += `<section>${lows.map(x => `<div class="alert bad low"><div class="low-b"><b>${esc(x.c.name)} · رصيد المشروع منخفض.</b><span>الرصيد ${money(x.st.bal)} أي ${pctTxt(x.st.pct)} مما دفعه الزبون.</span></div><button class="btn" data-act="client" data-id="${esc(x.c.id)}">فتح الملف</button></div>`).join("")}</section>`;
+  }
+  if (!S.readOnly && (!S.clients.length || (admin && S.members.filter(m=>m.kind==="partner").length < 2))){
+    const s1 = S.members.filter(m=>m.kind==="partner").length >= 2, s2 = S.clients.length > 0;
+    html += `<section><div class="sec-h"><h2>البداية</h2></div><div class="steps">
+      ${admin?`<div class="step ${s1?"ok":""}"><span class="no">1</span><b>أضيفوا الشريكين</b><span class="muted">كل شريك بنسبة 50%. اربطوا كل شريك بحسابه ليُختار تلقائيا في عملياته.</span><button class="btn ${s1?"":"pri"}" data-act="new-member">إضافة شريك</button></div>`:""}
+      <div class="step ${s2?"ok":""}"><span class="no">${admin?2:1}</span><b>أضيفوا الزبون الأول</b><span class="muted">اسم الزبون، المشروع، وقيمة العقد لمتابعة الدفعات المتبقية.</span><button class="btn ${!s2&&(s1||!admin)?"pri":""}" data-act="new-client">إضافة زبون</button></div>
+      <div class="step"><span class="no">${admin?3:2}</span><b>سجّلوا أول عملية</b><span class="muted">دفعة من الزبون أو مصروف، مع صورة الفاتورة. التاريخ والساعة يُسجّلان تلقائيا.</span><button class="btn" data-act="new-entry">تسجيل عملية</button></div>
+    </div></section>`;
+  }
+  return html;
+}
+function holdingsHtml(h){
+  const keys = Object.keys(h).filter(k => Math.abs(h[k]) > 0.004);
+  if (!keys.length) return `<div class="empty">عند تسجيل من استلم كل دفعة ومن دفع كل مصروف، يظهر هنا رصيد كل شخص أو صندوق.</div>`;
+  keys.sort((a,b) => h[b]-h[a]);
+  let sum = 0; keys.forEach(k => sum += h[k]);
+  return `<div class="hold">${keys.map(k => `<div><span>${esc(memberName(k))}${k&&byId(S.members,k)?` <span class="pill">${esc(KIND[byId(S.members,k).kind]||"")}</span>`:""}</span><b class="${h[k]<0?"neg":""}">${money(h[k])}</b></div>`).join("")}<div class="tot"><span>المجموع</span><span>${money(sum)}</span></div></div>
+  <p class="muted" style="margin:0;font-size:.8rem">«غير محدد» يجمع العمليات التي لم يُحدَّد فيها من استلم أو دفع. رصيد سالب يعني أن الشخص دفع من ماله أكثر مما استلم.</p>`;
+}
+function clientsTable(list){
+  if (!list.length) return `<div class="empty">لا يوجد زبائن بمشاريع جارية.</div>`;
+  return `<div class="tw"><table><thead><tr><th>الزبون</th><th>المشروع</th><th class="n">المقبوض</th><th class="n">المصروف</th><th class="n">الرصيد</th><th class="n">نسبة الرصيد</th><th class="n">المتبقي من العقد</th><th>الحالة</th></tr></thead><tbody>
+  ${list.map(c => { const st = projStats(c.id); return `<tr class="click" data-act="client" data-id="${esc(c.id)}" tabindex="0">
+    <td><b>${esc(c.name)}</b></td><td class="muted">${esc(c.project||"")}</td>
+    <td class="n pos">${money(st.paid)}</td><td class="n neg">${money(st.out)}</td>
+    <td class="n ${st.bal<0?"neg":""}"><b>${money(st.bal)}</b></td>
+    <td class="n">${st.pct==null?"—":`<span class="pill ${st.low?"low":"ok"}"><span class="num" dir="ltr">${pctTxt(st.pct)}</span></span>`}</td>
+    <td class="n">${st.contract?money(st.remaining):"—"}</td>
+    <td><span class="pill ${esc(c.status||"active")}">${esc(STATUS[c.status||"active"])}</span></td></tr>`; }).join("")}
+  </tbody></table></div>`;
+}
+
+/* ---------- clients list ---------- */
+function clientsView(){
+  const q = S.cq.trim().toLowerCase();
+  const list = S.clients.filter(c => !q || [c.name,c.project,c.location,c.phone].join(" ").toLowerCase().includes(q))
+    .sort((a,b) => (a.status==="done") - (b.status==="done") || (b.createdAt||"").localeCompare(a.createdAt||""));
+  return `<section><div class="sec-h"><h2>ملفات الزبائن</h2>${S.readOnly?"":`<button class="btn pri" data-act="new-client">إضافة زبون</button>`}</div>
+    <input type="search" id="cq" placeholder="ابحث بالاسم أو المشروع أو الهاتف" value="${esc(S.cq)}" aria-label="بحث في الزبائن">
+    ${list.length ? `<div class="grid">${list.map(clientCard).join("")}</div>` : `<div class="empty">${S.clients.length?"لا يوجد زبون بهذا البحث.":"أضيفوا أول زبون مع قيمة العقد لتبدأ متابعة دفعاته ومصاريف مشروعه."}</div>`}
+  </section>`;
+}
+function clientCard(c){
+  const st = projStats(c.id);
+  const w = st.pct == null ? 0 : Math.max(0, Math.min(100, st.pct));
+  return `<button class="card" data-act="client" data-id="${esc(c.id)}">
+    <div class="sec-h"><h3>${esc(c.name)}</h3><span class="row" style="gap:4px">${st.low?`<span class="pill low">رصيد منخفض</span>`:""}<span class="pill ${esc(c.status||"active")}">${esc(STATUS[c.status||"active"])}</span></span></div>
+    ${c.project?`<span class="muted" style="font-size:.85rem">${esc(c.project)}${c.location?" · "+esc(c.location):""}</span>`:""}
+    <dl class="kv">
+      <dt>دفعات الزبون</dt><dd class="pos">${money(st.paid)}</dd>
+      <dt>المصاريف</dt><dd class="neg">${money(st.out)}</dd>
+      <dt>الرصيد</dt><dd class="${st.bal<0?"neg":""}"><b>${money(st.bal)}</b> <span class="muted">${pctTxt(st.pct)}</span></dd>
+    </dl>
+    <div class="balbar ${st.low?"low":""}" title="نسبة الرصيد المتبقي"><span class="f" style="width:${w.toFixed(1)}%"></span></div>
+  </button>`;
+}
+
+/* ---------- project account ---------- */
+function projectView(cid){
+  const c = byId(S.clients, cid);
+  if (!c) return `<section><button class="btn back" data-act="back">رجوع للزبائن</button><div class="empty">هذا الزبون غير موجود.</div></section>`;
+  const st = projStats(cid);
+  const sub = S.pview || "dash";
+  const backBtn = sub === "dash" ? `<button class="btn back" data-act="back">رجوع لملفات الزبائن</button>` : `<button class="btn back" data-act="pview" data-v="dash">رجوع إلى لوحة المشروع</button>`;
+  const bar = `<div class="pbar"><div class="pn"><b>${esc(c.name)}</b><span>${esc(c.project||"")}</span></div>
+    <div class="pv"><span class="label">الرصيد</span><span class="${st.bal<0?"neg":""}">${money(st.bal)}</span>${st.pct==null?"":`<span class="pill ${st.low?"low":"ok"}"><span class="num" dir="ltr">${pctTxt(st.pct)}</span></span>`}</div></div>`;
+  let body;
+  if (sub === "phase") body = phaseView(c, S.phaseId);
+  else if (sub === "history") body = historyView(c);
+  else if (sub === "receipts") body = receiptsView(c);
+  else if (sub === "report") body = reportView(c, st);
+  else if (sub === "requests") body = requestsView(c);
+  else body = dashView(c, st);
+  return `<section>${backBtn}${bar}</section>${body}`;
+}
+function lowAlert(c, st){
+  if (!st.low) return "";
+  const open = openRequests(c.id);
+  const sug = Math.max(suggestAmount(c.id) - outstanding(c.id), 0);
+  return `<section><div class="alert bad low"><div class="low-b"><b class="low-t">رصيد المشروع منخفض.</b>
+    <dl class="kv"><dt>الرصيد الحالي</dt><dd><b>${money(st.bal)}</b></dd>
+    <dt>نسبة الرصيد المتبقي</dt><dd><span class="num" dir="ltr">${pctTxt(st.pct)}</span> <span class="muted">(حد التنبيه ${nf.format(st.thr)}%)</span></dd>
+    <dt>آخر دفعة</dt><dd>${st.last ? `${money(st.last.amount)} · ${dt(st.last.at)}` : "لا توجد"}</dd>
+    <dt>المبلغ المقترح طلبه</dt><dd><b>${sug ? money(sug) : "—"}</b></dd></dl>
+    ${open.length ? `<span>طلبات دفع مفتوحة: ${open.map(r => `N°${esc(reqNo(r))} (متبقٍّ ${money(r.amount - reqPaid(r.id))})`).join("، ")}</span>` : ""}
+  </div>${S.readOnly?"":`<button class="btn out" data-act="new-request" data-client="${esc(c.id)}">طلب دفعة من العميل</button>`}</div></section>`;
+}
+function dashView(c, st){
+  const id = c.id;
+  const w = st.pct == null ? 0 : Math.max(0, Math.min(100, st.pct));
+  const nRec = entriesFor(id).reduce((s,e) => s + (e.receipts||[]).length, 0);
+  const nReq = S.requests.filter(r => r.clientId === id).length;
+  const open = openRequests(id);
+  const ro = S.readOnly;
+  return `<section><div class="hero"><div><h2>${esc(c.name)} | ${esc(c.project || "بدون اسم مشروع")}</h2>
+      <div class="muted">${c.location?esc(c.location):""}${c.phone?` · <span dir="ltr" class="mono">${esc(c.phone)}</span>`:""}${st.contract?` · قيمة العقد ${money(st.contract)}`:""}</div>
+      <div class="row" style="margin-top:6px"><span class="pill ${esc(c.status||"active")}">${esc(STATUS[c.status||"active"])}</span>${c.startDate?`<span class="muted" style="font-size:.82rem">بداية الأشغال ${esc(ymdToFr(c.startDate))}</span>`:""}</div></div>
+      ${ro?"":`<button class="btn" data-act="edit-client" data-id="${esc(id)}">تعديل المشروع</button>`}</div>
+    <div class="lastpay">آخر دفعة من العميل: ${st.last ? `<b>${money(st.last.amount)}</b> بتاريخ ${dt(st.last.at)}` : "لا توجد دفعات بعد"}</div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">إجمالي دفعات العميل</span><span class="v in">${money(st.paid)}</span><span class="h">${S.entries.filter(e=>e.clientId===id&&e.type==="in"&&!e.void).length} دفعة</span></div>
+      <div class="kpi"><span class="label">إجمالي المصاريف</span><span class="v out">${money(st.out)}</span><span class="h">${st.fees?`منها أتعاب المكتب ${nf.format(st.fees)}`:"مواد، يد عاملة، ومصاريف أخرى"}</span></div>
+      <div class="kpi"><span class="label">الرصيد الحالي</span><span class="v ${st.bal<0?"out":""}">${money(st.bal)}</span><span class="h">الدفعات ناقص المصاريف</span></div>
+      <div class="kpi"><span class="label">نسبة الرصيد المتبقي</span><span class="v ${st.low?"out":""}"><span class="num" dir="ltr">${pctTxt(st.pct)}</span></span><span class="h">حد التنبيه ${nf.format(st.thr)}%</span></div>
+    </div>
+    <div class="balbar ${st.low?"low":""}" role="img" aria-label="الرصيد المتبقي ${pctTxt(st.pct)}"><span class="f" style="width:${w.toFixed(1)}%"></span><span class="thr" style="inset-inline-start:${Math.min(100,st.thr)}%"></span></div>
+    <div class="balcap"><span>الرصيد المتبقي من دفعات العميل</span>${st.contract?`<span>المتبقي من العقد ${money(st.remaining)}</span>`:""}</div>
+  </section>
+  ${lowAlert(c, st)}
+  ${ro?"":`<section><div class="qa">
+    <button class="btn in" data-act="pay" data-client="${esc(id)}">+ إضافة دفعة</button>
+    <button class="btn out" data-act="expense" data-client="${esc(id)}" data-kind="material">+ إضافة مصروف</button>
+    <button class="btn" data-act="expense" data-client="${esc(id)}" data-kind="labor">+ دفع عامل</button>
+    <button class="btn" data-act="new-request" data-client="${esc(id)}">+ طلب دفعة من العميل</button>
+    <button class="btn" data-act="pview" data-v="receipts">عرض الفواتير (${nRec})</button>
+    <button class="btn" data-act="pview" data-v="report">التقارير</button>
+  </div><div class="row">${S.canEdit?`<button class="btn ghost" data-act="fee" data-client="${esc(id)}">تحويل أتعاب إلى حساب المكتب</button>`:""}<button class="btn ghost" data-act="pview" data-v="requests">طلبات الدفع (${nReq})</button></div></section>`}
+  ${open.length?`<section><div class="sec-h"><h2>طلبات دفع مفتوحة</h2></div><div class="ops">${open.map(reqRow).join("")}</div></section>`:""}
+  <section><div class="sec-h"><h2>مراحل المشروع</h2><span class="muted" style="font-size:.82rem">تكلفة كل مرحلة</span></div>${phasesHtml(id)}</section>
+  <section><div class="sec-h"><h2>آخر العمليات المالية</h2><button class="btn ghost" data-act="pview" data-v="history">كل العمليات</button></div>
+    ${timeline(sortEntries(entriesFor(id)).slice(0, 10), {ctx:id, empty:"لا توجد عمليات بعد. ابدأوا بتسجيل أول دفعة من الزبون."})}</section>
+  ${!ro && !entriesFor(id).length && !S.requests.some(r=>r.clientId===id) ? `<section><button class="btn danger" data-act="del-client" data-id="${esc(id)}" style="align-self:flex-start">حذف الزبون</button></section>`:""}`;
+}
+function phasesHtml(cid){
+  const pc = phaseCosts(cid);
+  const list = activePhases().slice();
+  for (const p of phaseList()) if (p.hidden && pc[p.id]) list.push(p);
+  const rows = list.map(p => ({id:p.id, name:p.name, c:pc[p.id]}));
+  if (pc[""]) rows.push({id:"", name:"بدون مرحلة", c:pc[""]});
+  const max = Math.max(1, ...rows.map(r => r.c ? r.c.total : 0));
+  return `<div class="phases">${rows.map((r,i) => `<button class="ph ${r.c?"":"zero"}" data-act="phase" data-ph="${esc(r.id||"none")}">
+    <span class="ph-no">${r.id ? i+1 : "–"}</span><span class="ph-n">${esc(r.name)}</span>
+    <span class="ph-bar"><span style="width:${r.c ? (r.c.total/max*100).toFixed(1) : 0}%"></span></span>
+    <span class="ph-v">${r.c ? money(r.c.total) : "—"}</span></button>`).join("")}</div>`;
+}
+function phaseView(c, phId){
+  const list = S.entries.filter(e => e.clientId === c.id && e.type === "out" && (e.phaseId||"") === phId);
+  const sum = {material:0, labor:0, other:0};
+  for (const e of list) if (!e.void) sum[kindOf(e)] += e.amount;
+  const total = sum.material + sum.labor + sum.other;
+  const jobs = S.jobs.filter(j => j.clientId === c.id && (j.phaseId||"") === phId);
+  const ro = S.readOnly;
+  const part = k => list.filter(e => kindOf(e) === k);
+  const ph = esc(phId || "none");
+  return `<section><div class="sec-h"><h2>${esc(phaseName(phId))}</h2></div>
+    <div class="tw"><table style="min-width:0"><tbody>
+      <tr><td>المواد والمشتريات</td><td class="n">${money(sum.material)}</td></tr>
+      <tr><td>+ اليد العاملة</td><td class="n">${money(sum.labor)}</td></tr>
+      <tr><td>+ مصاريف أخرى</td><td class="n">${money(sum.other)}</td></tr>
+      <tr><td><b>= إجمالي تكلفة المرحلة</b></td><td class="n"><b>${money(total)}</b></td></tr>
+    </tbody></table></div>
+    ${ro?"":`<div class="qa three"><button class="btn out" data-act="expense" data-client="${esc(c.id)}" data-phase="${ph}" data-kind="material">+ مواد ومشتريات</button><button class="btn" data-act="expense" data-client="${esc(c.id)}" data-phase="${ph}" data-kind="labor">+ دفع عامل</button><button class="btn" data-act="expense" data-client="${esc(c.id)}" data-phase="${ph}" data-kind="other">+ مصروف آخر</button></div>`}
+  </section>
+  <section><div class="sec-h"><h2>A — المواد والمشتريات</h2><b>${money(sum.material)}</b></div>${timeline(part("material"), {ctx:c.id, empty:"لم تُسجَّل مواد في هذه المرحلة."})}</section>
+  <section><div class="sec-h"><h2>B — اليد العاملة</h2><b>${money(sum.labor)}</b></div>
+    ${jobs.length ? `<div class="tw"><table><thead><tr><th>العامل</th><th>التخصص</th><th>العمل</th><th class="n">المتفق عليه</th><th class="n">المقبوض</th><th class="n">المتبقي له</th></tr></thead><tbody>${jobs.map(j => { const w = byId(S.workers, j.workerId) || {}; const p = jobPaid(j.id); const a = Number(j.agreed)||0; return `<tr class="click" data-act="worker" data-id="${esc(j.workerId)}" tabindex="0"><td><b>${esc(w.name||"عامل")}</b></td><td class="muted">${esc(w.specialty||"")}</td><td>${esc(j.desc||"")}</td><td class="n">${a?money(a):"—"}</td><td class="n">${money(p)}</td><td class="n ${a&&a-p<0?"neg":""}">${a?money(a-p):"—"}</td></tr>`; }).join("")}</tbody></table></div>` : ""}
+    ${timeline(part("labor"), {ctx:c.id, empty:"لم تُسجَّل دفعات للعمال في هذه المرحلة."})}</section>
+  <section><div class="sec-h"><h2>C — مصاريف أخرى</h2><b>${money(sum.other)}</b></div>${timeline(part("other"), {ctx:c.id, empty:"لا توجد مصاريف أخرى في هذه المرحلة."})}</section>`;
+}
+function historyView(c){
+  return `<section><div class="sec-h"><h2>سجل العمليات المالية للمشروع</h2><button class="btn" data-act="export-client" data-client="${esc(c.id)}">تصدير CSV</button></div>
+    ${timeline(entriesFor(c.id), {ctx:c.id, rb:runningBalance(c.id)})}</section>`;
+}
+function receiptsView(c){
+  const items = [];
+  for (const e of sortEntries(entriesFor(c.id))) for (const r of (e.receipts||[])) items.push({e, r});
+  return `<section><div class="sec-h"><h2>الفواتير والوصولات</h2><span class="muted">${items.length} ملف</span></div>
+    ${items.length ? `<div class="gallery">${items.map(({e,r}) => `<button class="gi" data-act="receipt" data-rid="${esc(r.id)}" data-rtype="${esc(r.type)}" data-eid="${esc(e.id)}">
+      <span class="im">${/pdf/.test(r.type) ? `<span class="pdf mono">PDF</span>` : `<img src="/_blob/${esc(r.id)}" alt="" loading="lazy">`}</span>
+      <span class="cap"><b>${money(e.amount)}</b><span>${opTitle(e)}</span><span class="muted">${esc(fmtD(e.at))}${e.void?" · ملغاة":""}</span></span></button>`).join("")}</div>`
+      : `<div class="empty">لا توجد فواتير مرفقة بعد. أرفقوا صورة الفاتورة عند تسجيل كل مصروف أو دفعة.</div>`}</section>`;
+}
+function reportView(c, st){
+  const pc = phaseCosts(c.id);
+  const rows = phaseList().filter(p => !p.hidden || pc[p.id]).map(p => ({name:p.name, c:pc[p.id]})).filter(r => r.c);
+  if (pc[""]) rows.push({name:"بدون مرحلة", c:pc[""]});
+  const jobs = S.jobs.filter(j => j.clientId === c.id);
+  const pays = sortEntries(S.entries.filter(e => e.clientId === c.id && e.type === "in" && !e.void));
+  const fees = sortEntries(S.entries.filter(e => e.clientId === c.id && e.type === "fee" && !e.void));
+  return `<section><div class="sec-h"><h2>تقرير المشروع</h2><button class="btn" data-act="export-client" data-client="${esc(c.id)}">تصدير CSV</button></div>
+    <div class="tw"><table style="min-width:0"><tbody>
+      <tr><td>إجمالي دفعات العميل</td><td class="n pos">${money(st.paid)}</td></tr>
+      <tr><td>المواد والمشتريات</td><td class="n neg">${money(-st.k.material)}</td></tr>
+      <tr><td>اليد العاملة</td><td class="n neg">${money(-st.k.labor)}</td></tr>
+      <tr><td>مصاريف أخرى</td><td class="n neg">${money(-st.k.other)}</td></tr>
+      <tr><td>أتعاب محوّلة إلى المكتب</td><td class="n neg">${money(-st.fees)}</td></tr>
+      <tr><td><b>الرصيد الحالي</b></td><td class="n"><b>${money(st.bal)}</b></td></tr>
+    </tbody></table></div></section>
+  <section><div class="sec-h"><h2>التكلفة حسب المرحلة</h2></div>
+    ${rows.length ? `<div class="tw"><table><thead><tr><th>المرحلة</th><th class="n">المواد</th><th class="n">اليد العاملة</th><th class="n">أخرى</th><th class="n">الإجمالي</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${esc(r.name)}</td><td class="n">${money(r.c.material)}</td><td class="n">${money(r.c.labor)}</td><td class="n">${money(r.c.other)}</td><td class="n"><b>${money(r.c.total)}</b></td></tr>`).join("")}
+    <tr><td><b>المجموع</b></td><td class="n"><b>${money(st.k.material)}</b></td><td class="n"><b>${money(st.k.labor)}</b></td><td class="n"><b>${money(st.k.other)}</b></td><td class="n"><b>${money(st.spent)}</b></td></tr>
+    </tbody></table></div>` : `<div class="empty">لا توجد مصاريف بعد.</div>`}</section>
+  <section><div class="sec-h"><h2>العمال والحرفيون في المشروع</h2></div>
+    ${jobs.length ? `<div class="tw"><table><thead><tr><th>العامل</th><th>المرحلة</th><th>العمل</th><th class="n">المتفق عليه</th><th class="n">المقبوض</th><th class="n">المتبقي له</th></tr></thead><tbody>
+    ${jobs.map(j => { const p = jobPaid(j.id), a = Number(j.agreed)||0; return `<tr class="click" data-act="worker" data-id="${esc(j.workerId)}" tabindex="0"><td><b>${esc(workerName(j.workerId))}</b></td><td>${esc(phaseName(j.phaseId))}</td><td>${esc(j.desc||"")}</td><td class="n">${a?money(a):"—"}</td><td class="n">${money(p)}</td><td class="n">${a?money(a-p):"—"}</td></tr>`; }).join("")}
+    </tbody></table></div>` : `<div class="empty">لم يُسجَّل أي عامل في هذا المشروع.</div>`}</section>
+  <section><div class="sec-h"><h2>دفعات العميل</h2></div>
+    ${pays.length ? `<div class="tw"><table><thead><tr><th>التاريخ</th><th class="n">المبلغ</th><th>طريقة الدفع</th><th>المرجع</th><th>طلب الدفع</th></tr></thead><tbody>
+    ${pays.map(e => `<tr class="click" data-act="entry" data-id="${esc(e.id)}" tabindex="0"><td>${dt(e.at)}</td><td class="n pos">${money(e.amount)}</td><td>${esc(METHOD_LABEL[e.method]||"")}</td><td>${esc(e.ref||"")}</td><td>${e.requestId&&byId(S.requests,e.requestId)?"N°"+esc(reqNo(byId(S.requests,e.requestId))):""}</td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="empty">لا توجد دفعات.</div>`}</section>
+  ${fees.length ? `<section><div class="sec-h"><h2>الأتعاب المحوّلة إلى المكتب</h2></div><div class="ops">${fees.map(e => opRow(e, {ctx:c.id})).join("")}</div></section>` : ""}`;
+}
+function reqRow(r){
+  const s = reqStatus(r), p = reqPaid(r.id);
+  return `<button class="op" data-act="request" data-id="${esc(r.id)}">
+    <span class="ic transfer" aria-hidden="true">N°</span>
+    <span class="t">طلب دفعة N°${esc(reqNo(r))} · ${esc(clientName(r.clientId))}</span>
+    <span class="a">${money(r.amount)}</span>
+    <span class="s">المدفوع ${money(p)} · المتبقي ${money(Math.max(r.amount - p, 0))}</span>
+    <span class="m"><span class="pill st-${s}">${REQ[s][0]} · ${REQ[s][1]}</span><span class="mono" dir="ltr">${esc(ymdToFr(r.date))}</span></span>
+  </button>`;
+}
+function requestsView(c){
+  const list = S.requests.filter(r => r.clientId === c.id).sort((a,b) => (b.no||0) - (a.no||0));
+  return `<section><div class="sec-h"><h2>طلبات الدفع</h2>${S.readOnly?"":`<button class="btn pri" data-act="new-request" data-client="${esc(c.id)}">+ طلب دفعة</button>`}</div>
+    ${list.length ? `<div class="ops">${list.map(reqRow).join("")}</div>` : `<div class="empty">لا توجد طلبات دفع لهذا المشروع.</div>`}</section>`;
+}
+
+/* ---------- office account ---------- */
+function officeView(){
+  const list = entriesFor(OFFICE);
+  const t = clientTotals(OFFICE), p = profitCalc();
+  const partners = S.members.filter(m => m.kind === "partner");
+  const drawn = Object.values(p.draws).reduce((a,b) => a+b, 0);
+  const ro = S.readOnly;
+  return `<section><div class="hero"><div><h2>حسابات المكتب</h2><div class="muted">خاص بالشريكين. أموال الزبائن لا تدخل هنا إلا بتحويل أتعاب واضح من ملف المشروع.</div></div></div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">مداخيل المكتب</span><span class="v in">${money(p.fees + p.officeIn)}</span><span class="h">منها أتعاب من المشاريع ${nf.format(p.fees)}</span></div>
+      <div class="kpi"><span class="label">مصاريف المكتب</span><span class="v out">${money(p.overhead)}</span><span class="h">كراء، كهرباء، هاتف، تنقلات…</span></div>
+      <div class="kpi"><span class="label">سحوبات الشريكين من الأرباح</span><span class="v out">${money(drawn)}</span><span class="h">من الربح القابل للتوزيع ${nf.format(p.dist)}</span></div>
+      <div class="kpi"><span class="label">رصيد المكتب</span><span class="v ${t.b<0?"out":""}">${money(t.b)}</span><span class="h">المداخيل ناقص المصاريف والسحوبات</span></div>
+    </div>
+    ${ro?"":`<div class="qa"><button class="btn in" data-act="office-entry" data-type="in">+ دخل للمكتب</button><button class="btn out" data-act="office-entry" data-type="out" data-cat="office">+ مصروف للمكتب</button><button class="btn" data-act="office-entry" data-type="out" data-cat="draw">+ سحب أرباح شريك</button></div>
+    <div class="row"><button class="btn ghost" data-act="fee">تحويل أتعاب من مشروع إلى المكتب</button></div>`}
+  </section>
+  <section><div class="sec-h"><h2>الشريكان</h2><span class="muted" style="font-size:.82rem">الربح القابل للتوزيع = مداخيل المكتب − مصاريف المكتب = ${money(p.dist)}</span></div>
+    ${partners.length ? `<div class="grid">${partners.map(m => { const sh = p.share[m.id] || 0, ent = p.dist * sh / 100, dr = p.draws[m.id] || 0, ex = p.expBy[m.id] || 0; return `<button class="card" data-act="edit-member" data-id="${esc(m.id)}">
+      <div class="sec-h"><h3>${esc(m.name)}${m.userId===S.me?' <span class="pill">أنت</span>':""}</h3><span class="pill ok"><span class="num" dir="ltr">${nf.format(sh)}%</span></span></div>
+      <dl class="kv"><dt>نصيبه من الربح</dt><dd>${money(ent)}</dd><dt>سحب من الأرباح</dt><dd class="neg">${money(dr)}</dd><dt>سحب لمصاريف المكتب</dt><dd>${money(ex)}</dd><dt><b>المتبقي له من الأرباح</b></dt><dd class="${ent-dr<0?"neg":""}"><b>${money(ent-dr)}</b></dd></dl></button>`; }).join("")}</div>
+    <p class="muted" style="margin:0;font-size:.82rem">«سحب لمصاريف المكتب» هو ما أخذه الشريك أو دفعه من أجل مصاريف المكتب، ولا يُخصم من نصيبه. «سحب من الأرباح» يُخصم من نصيبه.${p.doneLeft>0?` في المشاريع المنتهية رصيد زبائن متبقٍّ ${money(p.doneLeft)} لم يُحوَّل إلى المكتب كأتعاب.`:""}</p>`
+    : `<div class="empty">أضيفوا الشريكين. لكل واحد 50% من الأرباح.${ro?"":`<button class="btn pri" data-act="new-member">إضافة شريك</button>`}</div>`}
+  </section>
+  <section><div class="sec-h"><h2>سجل حساب المكتب</h2></div>${timeline(list, {ctx:OFFICE, rb:runningBalance(OFFICE), empty:"لا توجد عمليات في حساب المكتب بعد."})}</section>`;
+}
+/* ---------- operations & audit ---------- */
+function filtered(){
+  const f = S.f, q = f.q.trim().toLowerCase();
+  return sortEntries(S.entries.filter(e => {
+    if (!e.clientId || e.clientId === OFFICE) return false;
+    if (f.type && e.type !== f.type) return false;
+    if (f.client && e.clientId !== f.client && !(f.client === OFFICE && e.type === "fee")) return false;
+    if (f.member && e.memberId !== f.member && e.fromId !== f.member && e.toId !== f.member && e.beneficiaryId !== f.member) return false;
+    if (f.month){ const d = new Date(e.at); if (`${d.getFullYear()}-${pad(d.getMonth()+1)}` !== f.month) return false; }
+    if (q){ const hay = [e.note,e.supplier,e.ref,e.item,e.desc,CAT_LABEL[e.category],clientName(e.clientId),memberName(e.memberId),e.workerId?workerName(e.workerId):"",phaseName(e.phaseId),String(e.amount)].join(" ").toLowerCase(); if (!hay.includes(q)) return false; }
+    return true;
+  }));
+}
+function opsView(){
+  const list = filtered(); const t = {i:0, o:0};
+  for (const e of list){ if (e.void) continue; if (e.type==="in") t.i += e.amount; else if (e.type==="out") t.o += e.amount; }
+  const opt = (arr, sel) => arr.map(([v,l]) => `<option value="${esc(v)}" ${sel===v?"selected":""}>${esc(l)}</option>`).join("");
+  return `<section><div class="sec-h"><h2>سجل عمليات الزبائن</h2><div class="row"><button class="btn" data-act="export" ${S.entries.length?"":"disabled"}>تصدير CSV</button></div></div>
+    <div class="filters">
+      <input class="q" type="search" id="fq" placeholder="بحث: مادة، مورد، عامل، ملاحظة، رقم فاتورة، مبلغ" value="${esc(S.f.q)}" aria-label="بحث">
+      <select id="ft" aria-label="النوع"><option value="">كل الأنواع</option>${opt([["in","دفعة من زبون"],["out","مصروف"]].concat(S.canEdit?[["fee","أتعاب للمكتب"]]:[]), S.f.type)}</select>
+      <select id="fc" aria-label="الزبون"><option value="">كل الزبائن</option>${opt(S.clients.map(c=>[c.id,c.name]), S.f.client)}</select>
+      <select id="fm" aria-label="العضو"><option value="">كل الأعضاء</option>${opt(S.members.map(m=>[m.id,m.name]), S.f.member)}</select>
+      <input type="month" id="fmo" value="${esc(S.f.month)}" aria-label="الشهر">
+    </div>
+    <div class="row muted" style="font-size:.88rem;gap:16px"><span>${list.length} عملية</span><span>مداخيل: <b class="pos">${money(t.i)}</b></span><span>مصاريف: <b class="neg">${money(t.o)}</b></span>${(S.f.q||S.f.type||S.f.client||S.f.member||S.f.month)?`<button class="btn ghost" data-act="clear-f">مسح التصفية</button>`:""}</div>
+    ${list.length?`<div class="ops">${list.map(e=>opRow(e)).join("")}</div>`:`<div class="empty">${S.entries.length?"لا توجد عمليات بهذه التصفية.":"لم تُسجَّل أي عملية بعد."}</div>`}
+  </section>`;
+}
+function fmtVal(k, v){
+  if (v === "" || v == null) return "فارغ";
+  if (["amount","unitPrice","agreed","contract"].includes(k)) return nf.format(Number(v)||0);
+  if (k === "at") return fmtDT(v);
+  if (k === "clientId") return clientName(v);
+  if (k === "phaseId") return phaseName(v);
+  if (k === "workerId") return workerName(v);
+  if (k === "requestId") { const r = byId(S.requests, v); return r ? "N°" + reqNo(r) : "—"; }
+  if (["memberId","fromId","toId","beneficiaryId"].includes(k)) return memberName(v);
+  if (k === "category") return CAT_LABEL[v] || v;
+  if (k === "kind") return XKIND[v] || v;
+  if (k === "type") return TYPE_LABEL[v] || v;
+  if (k === "method") return METHOD_LABEL[v] || v;
+  if (k === "feeKind") return FEE_LABEL[v] || v;
+  if (k === "status") return STATUS[v] || v;
+  if (k === "date" || k === "due" || k === "startDate") return ymdToFr(v);
+  return String(v);
+}
+function histText(h){
+  const ch = Object.keys(h.prev||{}).map(k => `${KEY_LABEL[k]||k} كان «${esc(fmtVal(k, h.prev[k]))}»`);
+  if (h.added) ch.push(`أُضيف ${h.added} مرفق`);
+  if (h.action === "void") ch.push(`أُلغيت: ${esc(h.reason||"")}`);
+  if (h.action === "restore") ch.push("أُعيد تفعيلها");
+  if (h.action === "sent") ch.push("حُدِّد الطلب كمُرسَل");
+  if (h.action === "cancel") ch.push(`أُلغي الطلب: ${esc(h.reason||"")}`);
+  return ch.join("، ") || "تعديل";
+}
+function auditView(){
+  const ev = [];
+  for (const e of S.entries){
+    const lbl = `${TYPE_LABEL[e.type]||""} ${nf.format(e.amount)} ${cur()}`;
+    ev.push({at:e.createdAt, by:e.createdBy, txt:`أنشأ عملية: ${esc(lbl)} · ${opTitle(e)}`, act:"entry", id:e.id});
+    for (const h of e.history||[]) ev.push({at:h.at, by:h.by, txt:`عدّل عملية (${esc(lbl)}): ${histText(h)}`, act:"entry", id:e.id});
+  }
+  for (const r of S.requests){
+    ev.push({at:r.createdAt, by:r.createdBy, txt:`أنشأ طلب دفعة N°${esc(reqNo(r))} بمبلغ ${esc(nf.format(r.amount))} ${esc(cur())}`, act:"request", id:r.id});
+    for (const h of r.history||[]) ev.push({at:h.at, by:h.by, txt:`طلب N°${esc(reqNo(r))}: ${histText(h)}`, act:"request", id:r.id});
+  }
+  for (const j of S.jobs) for (const h of j.history||[]) ev.push({at:h.at, by:h.by, txt:`عدّل عمل ${esc(workerName(j.workerId))} في ${esc(clientName(j.clientId))}: ${histText(h)}`});
+  for (const c of S.clients) for (const h of c.history||[]) ev.push({at:h.at, by:h.by, txt:`عدّل بيانات ${esc(c.name)}: ${histText(h)}`});
+  for (const w of S.workers) for (const h of w.history||[]) ev.push({at:h.at, by:h.by, txt:`عدّل بيانات العامل ${esc(w.name)}: ${histText(h)}`});
+  ev.sort((a,b) => (b.at||"").localeCompare(a.at||""));
+  return `<section><div class="sec-h"><h2>سجل التدقيق</h2></div>
+    <p class="muted" style="margin:0">كل إنشاء وتعديل وإلغاء، مع من قام به ومتى. لا يُحذف شيء من هذا السجل.</p>
+    ${ev.length ? `<div class="ops">${ev.slice(0, 500).map(x => `<${x.act?"button":"div"} class="op" ${x.act?`data-act="${x.act}" data-id="${esc(x.id)}"`:""} style="grid-template-columns:minmax(0,1fr) auto"><span class="t" style="white-space:normal">${x.txt}</span><span class="m">${dt(x.at)}</span><span class="s">${esc(personName(x.by))}</span></${x.act?"button":"div"}>`).join("")}</div>` : `<div class="empty">لا توجد أحداث بعد.</div>`}</section>`;
+}
+
+/* ---------- team, workers, profit ---------- */
+function profitCalc(){
+  let officeIn = 0, fees = 0, overhead = 0; const draws = {}, expBy = {};
+  for (const e of active()){
+    if (e.type === "fee"){ fees += e.amount; continue; }
+    if (e.clientId !== OFFICE) continue;
+    if (e.type === "in") officeIn += e.amount;
+    else if (e.type === "out"){
+      if (e.category === "draw") draws[e.beneficiaryId||""] = (draws[e.beneficiaryId||""]||0) + e.amount;
+      else { overhead += e.amount; if (e.memberId) expBy[e.memberId] = (expBy[e.memberId]||0) + e.amount; }
+    }
+  }
+  const partners = S.members.filter(m => m.kind === "partner");
+  const share = {}; for (const m of partners) share[m.id] = Number(m.share) > 0 ? Number(m.share) : 100 / partners.length;
+  let doneLeft = 0; for (const c of S.clients) if (c.status === "done"){ const b = projStats(c.id).bal; if (b > 0) doneLeft += b; }
+  return {officeIn, fees, overhead, dist: fees + officeIn - overhead, draws, expBy, share, doneLeft};
+}
+function teamView(){
+  const h = holdings();
+  const partners = S.members.filter(m => m.kind === "partner");
+  const shareSum = partners.reduce((s,m) => s + (Number(m.share) || 100 / partners.length), 0);
+  const transfers = S.entries.filter(e => e.type === "transfer");
+  let html = `<section><div class="sec-h"><h2>الشركاء والأعضاء والصناديق</h2>${S.readOnly?"":`<button class="btn pri" data-act="new-member">إضافة</button>`}</div>`;
+  if (!S.members.length) html += `<div class="empty">أضيفوا الشريكين، كل واحد بنسبة 50%، ثم بقية الأعضاء، ثم الصندوق أو الحساب البنكي.</div>`;
+  else html += `<div class="grid">${["partner","member","account"].flatMap(g => S.members.filter(m => (m.kind||"member") === g)).map(m => `<button class="card" data-act="edit-member" data-id="${esc(m.id)}">
+      <div class="sec-h"><h3>${esc(m.name)}</h3><span class="pill">${esc(KIND[m.kind]||"عضو")}${m.kind==="partner"?` · ${nf.format(Number(m.share) || 100/partners.length)}%`:""}</span></div>
+      <dl class="kv"><dt>المبلغ الذي بحوزته</dt><dd class="${(h[m.id]||0)<0?"neg":""}"><b>${money(h[m.id]||0)}</b></dd>
+      ${m.phone?`<dt>الهاتف</dt><dd><span dir="ltr" class="mono">${esc(m.phone)}</span></dd>`:""}
+      ${m.userId?`<dt>الحساب</dt><dd>${esc(personName(m.userId))}${m.userId===S.me?" (أنت)":""}</dd>`:""}</dl></button>`).join("")}</div>`;
+  if (partners.length && Math.abs(shareSum - 100) > 0.01) html += `<div class="alert"><div>مجموع نسب الشركاء <b>${nf.format(shareSum)}%</b> وليس 100%. عدّلوا النسب حتى يكون توزيع الأرباح صحيحا.</div></div>`;
+  html += `</section><section><div class="sec-h"><h2>أين توجد الأموال</h2></div>${holdingsHtml(h)}</section>
+  <section><div class="sec-h"><h2>التحويلات بين الأعضاء</h2>${S.readOnly?"":`<button class="btn" data-act="transfer">+ تحويل</button>`}</div>${timeline(transfers, {empty:"لا توجد تحويلات. سجّلوا هنا كل مبلغ يسلّمه شخص أو صندوق لآخر."})}</section>`;
+  return html;
+}
+function workersListView(){
+  const ws = S.workers.slice().sort((a,b) => a.name.localeCompare(b.name, "ar"));
+  return `<section><div class="sec-h"><h2>العمال والحرفيون</h2>${S.readOnly?"":`<button class="btn" data-act="new-worker">إضافة عامل</button>`}</div>
+    ${ws.length ? `<div class="tw"><table><thead><tr><th>الاسم</th><th>التخصص</th><th class="n">المستحقات</th><th class="n">المقبوض</th><th class="n">المتبقي له</th></tr></thead><tbody>
+    ${ws.map(w => { const x = workerStats(w.id); return `<tr class="click" data-act="worker" data-id="${esc(w.id)}" tabindex="0"><td><b>${esc(w.name)}</b></td><td class="muted">${esc(w.specialty||"")}</td><td class="n">${money(x.due)}</td><td class="n">${money(x.paid)}</td><td class="n ${x.rem>0?"neg":""}">${money(x.rem)}</td></tr>`; }).join("")}
+    </tbody></table></div>` : `<div class="empty">يُضاف العامل تلقائيا عند تسجيل أول دفعة له من ملف المشروع، ويُختار بعدها من القائمة.</div>`}</section>`;
+}
+function workerView(wid){
+  const w = byId(S.workers, wid);
+  if (!w) return `<section><button class="btn back" data-act="worker-back">رجوع</button><div class="empty">هذا العامل غير موجود.</div></section>`;
+  const x = workerStats(wid);
+  return `<section><button class="btn back" data-act="worker-back">رجوع للعمال والحرفيين</button>
+    <div class="hero"><div><h2>${esc(w.name)}</h2><div class="muted">${esc(w.specialty||"بدون تخصص")}${w.phone?` · <span dir="ltr" class="mono">${esc(w.phone)}</span>`:""}</div>${w.notes?`<div class="notice" style="margin-top:6px">${esc(w.notes)}</div>`:""}</div>
+    ${S.readOnly?"":`<button class="btn" data-act="edit-worker" data-id="${esc(wid)}">تعديل البيانات</button>`}</div>
+    <div class="kpis">
+      <div class="kpi"><span class="label">إجمالي المستحقات</span><span class="v">${money(x.due)}</span><span class="h">مجموع المبالغ المتفق عليها</span></div>
+      <div class="kpi"><span class="label">إجمالي ما قبض</span><span class="v in">${money(x.paid)}</span><span class="h">${x.pays.filter(e=>!e.void).length} دفعة</span></div>
+      <div class="kpi"><span class="label">المتبقي له</span><span class="v ${x.rem>0?"out":""}">${money(x.rem)}</span><span class="h">من الأعمال المتفق عليها</span></div>
+      <div class="kpi"><span class="label">المشاريع</span><span class="v">${x.projects.length}</span><span class="h">${x.projects.map(id => esc(clientName(id))).join("، ")}</span></div>
+    </div></section>
+  <section><div class="sec-h"><h2>الأعمال</h2></div>
+    ${x.jobs.length ? `<div class="tw"><table><thead><tr><th>المشروع</th><th>المرحلة</th><th>العمل</th><th class="n">المتفق عليه</th><th class="n">المقبوض</th><th class="n">المتبقي</th></tr></thead><tbody>
+    ${x.jobs.map(j => { const p = jobPaid(j.id), a = Number(j.agreed)||0; return `<tr class="click" data-act="phase" data-client="${esc(j.clientId)}" data-ph="${esc(j.phaseId||"none")}" tabindex="0"><td><b>${esc(clientName(j.clientId))}</b></td><td>${esc(phaseName(j.phaseId))}</td><td>${esc(j.desc||"")}</td><td class="n">${a?money(a):"—"}</td><td class="n">${money(p)}</td><td class="n">${a?money(a-p):"—"}</td></tr>`; }).join("")}
+    </tbody></table></div>` : `<div class="empty">لا توجد أعمال مسجلة.</div>`}</section>
+  <section><div class="sec-h"><h2>سجل الدفعات</h2></div>${timeline(x.pays, {empty:"لم يقبض أي دفعة بعد."})}</section>
+  ${!S.readOnly && !x.jobs.length && !x.pays.length ? `<section><button class="btn danger" data-act="del-worker" data-id="${esc(wid)}" style="align-self:flex-start">حذف العامل</button></section>` : ""}`;
+}
+
+/* ---------- settings ---------- */
+function settingsView(){
+  const d = {...S.settings, ...(S.setDraft||{})};
+  const can = S.canEdit && !S.readOnly;
+  const dis = can ? "" : "disabled";
+  const f = (k, label, ph, type) => `<label class="fld"><span>${label}</span><input type="${type||"text"}" id="st-${k}" value="${esc(d[k] ?? "")}" placeholder="${esc(ph||"")}" ${dis}></label>`;
+  const list = S.phDraft || phaseList();
+  return `${can?"":`<section><div class="notice">تعديل الإعدادات والمراحل متاح للمحرّرين وصاحب الدفتر فقط.</div></section>`}
+  <section><div class="sec-h"><h2>بيانات المكتب</h2></div>
+    <div class="card">
+      <div class="row">${d.logoId?`<img class="logo-prev" src="/_blob/${esc(d.logoId)}" alt="الشعار">`:`<span class="muted">لا يوجد شعار.</span>`}
+        ${can && S.assets ? `<label class="btn"><input type="file" id="logo-in" accept="image/png,image/jpeg" hidden>${d.logoId?"تغيير الشعار":"رفع الشعار"}</label>${d.logoId?`<button class="btn ghost" data-act="logo-remove">إزالة</button>`:""}` : ""}</div>
+      <div class="f2">${f("company","اسم المكتب / الشركة",BRAND)}${f("activity","النشاط","Entreprise de bâtiment et travaux publics")}</div>
+      ${f("address","العنوان")}
+      <div class="f2">${f("phone","الهاتف","","tel")}${f("email","البريد الإلكتروني","","email")}</div>
+      ${f("legal","السجل التجاري والأرقام الجبائية","RC … · NIF … · NIS … · AI …")}
+      <label class="fld"><span>بيانات الدفع (تظهر في طلبات الدفع)</span><textarea id="st-payInfo" placeholder="Banque … RIB … · CCP … Clé …" ${dis}>${esc(d.payInfo||"")}</textarea></label>
+    </div></section>
+  <section><div class="sec-h"><h2>العملة والتنبيهات</h2></div>
+    <div class="card"><div class="f2">${f("currency","رمز العملة في التطبيق","دج")}${f("currencyCode","رمز العملة في الوثائق","DZD")}</div>
+      ${f("lowPct","حد تنبيه انخفاض الرصيد الافتراضي (%)","10")}
+      <span class="muted" style="font-size:.82rem">يمكن تغيير الحد لكل مشروع من «تعديل المشروع».</span>
+      ${can?`<button class="btn pri" data-act="save-settings" style="align-self:flex-start">حفظ الإعدادات</button>`:""}</div></section>
+  <section><div class="sec-h"><h2>مراحل البناء</h2>${S.phDraft?`<span class="pill st-partial">تعديلات غير محفوظة</span>`:""}</div>
+    <div class="card">
+      <span class="muted" style="font-size:.85rem">القائمة نفسها لكل المشاريع. المرحلة المخفية تبقى في العمليات القديمة ولا تظهر في الإدخال الجديد.</span>
+      ${list.map((p,i) => `<div class="phed ${p.hidden?"off":""}"><span class="ph-no">${i+1}</span><input type="text" id="ph-n-${esc(p.id)}" value="${esc(p.name)}" aria-label="اسم المرحلة" ${dis}>
+        <button class="btn" data-act="ph-up" data-i="${i}" ${dis||(i===0?"disabled":"")} aria-label="تحريك للأعلى">▲</button><button class="btn" data-act="ph-down" data-i="${i}" ${dis||(i===list.length-1?"disabled":"")} aria-label="تحريك للأسفل">▼</button>
+        <button class="btn" data-act="ph-hide" data-i="${i}" ${dis}>${p.hidden?"إظهار":"إخفاء"}</button></div>`).join("")}
+      ${can?`<div class="row"><input type="text" id="ph-new" value="${esc(S.phNew)}" placeholder="اسم مرحلة جديدة" style="flex:1 1 200px"><button class="btn" data-act="ph-add">إضافة مرحلة</button></div>
+      <div class="row"><button class="btn pri" data-act="ph-save" ${S.phDraft?"":"disabled"}>حفظ المراحل</button>${S.phDraft?`<button class="btn" data-act="ph-reset">تراجع</button>`:""}</div>`:""}
+    </div></section>
+  <section><div class="sec-h"><h2>الصلاحيات</h2></div><div class="notice">صلاحية «مساهم» تكفي لتسجيل العمليات. رفع صور الفواتير، تعديل التاريخ والساعة، وتغيير الإعدادات تحتاج صلاحية «محرّر».</div></section>`;
+}
+
+/* ---------- profiles ---------- */
+async function resolveProfiles(){
+  if (!S.user) return;
+  const ids = new Set();
+  const addH = list => { for (const h of list||[]) if (h.by) ids.add(h.by); };
+  for (const e of S.entries){ if (e.createdBy) ids.add(e.createdBy); if (e.voidBy) ids.add(e.voidBy); if (e.updatedBy) ids.add(e.updatedBy); addH(e.history); }
+  for (const r of S.requests){ if (r.createdBy) ids.add(r.createdBy); if (r.sentBy) ids.add(r.sentBy); addH(r.history); }
+  for (const x of [...S.clients, ...S.workers, ...S.jobs]) addH(x.history);
+  for (const m of S.members) if (m.userId) ids.add(m.userId);
+  const need = [...ids].filter(id => !S.profAsked.has(id));
+  if (!need.length) return;
+  need.forEach(id => S.profAsked.add(id));
+  try { const ps = await S.user.profiles(need); Object.assign(S.prof, ps); render(); } catch(_){}
+}
+
+/* ---------- modal ---------- */
+let modalClose = null;
+function openModal(html, cls){
+  if (modalClose){ try{ modalClose(); }catch(_){} modalClose = null; }
+  const r = $("#modal-root");
+  r.innerHTML = `<div class="scrim" data-scrim="1"><div class="sheet ${cls||""}" role="dialog" aria-modal="true">${html}</div></div>`;
+  document.body.style.overflow = "hidden";
+  const sh = $(".sheet", r);
+  setTimeout(()=>{ try { (sh.querySelector("[autofocus]") || sh.querySelector("input:not([type=radio]):not([type=file]):not([type=hidden]):not([disabled]),select,textarea"))?.focus(); } catch(_){} }, 30);
+  return sh;
+}
+function closeModal(){ if (modalClose) { try{ modalClose(); }catch(_){} modalClose = null; } $("#modal-root").innerHTML = ""; document.body.style.overflow = ""; }
+const sheetHead = t => `<div class="sheet-h"><h2>${t}</h2><button class="x-btn" type="button" data-act="close" aria-label="إغلاق">×</button></div>`;
+const more = (inner, open) => `<details class="more" ${open?"open":""}><summary>مزيد من التفاصيل</summary><div class="inner">${inner}</div></details>`;
+const methodSelect = (id, sel) => `<select id="${id}">${METHODS.map(([k,l]) => `<option value="${k}" ${sel===k?"selected":""}>${l}</option>`).join("")}${sel && !METHODS.some(m => m[0]===sel) ? `<option value="${esc(sel)}" selected>${esc(METHOD_LABEL[sel]||sel)}</option>` : ""}</select>`;
+const memberOpts = sel => `<option value="">— غير محدد —</option>` + S.members.map(m => `<option value="${esc(m.id)}" ${sel===m.id?"selected":""}>${esc(m.name)} (${esc(KIND[m.kind]||"عضو")})</option>`).join("");
+function defaultClient(){ const a = S.clients.filter(c => c.status !== "done"); return a.length === 1 ? a[0].id : ""; }
+function clientField(fid, cid, fixed){
+  if (fixed && cid){ const c = byId(S.clients, cid); return `<input type="hidden" id="${fid}" value="${esc(cid)}"><div class="fixed-c"><span class="label">المشروع</span><b>${esc(c ? c.name : "")}</b><span class="muted">${esc(c && c.project || "")}</span></div>`; }
+  return `<label class="fld"><span>الزبون / المشروع</span><select id="${fid}"><option value="">— اختر المشروع —</option>${S.clients.filter(c => c.status !== "done" || c.id === cid).map(c => `<option value="${esc(c.id)}" ${c.id===cid?"selected":""}>${esc(c.name)}${c.project?" · "+esc(c.project):""}</option>`).join("")}</select></label>`;
+}
+function phaseSelect(id, sel){
+  const list = activePhases().slice();
+  if (sel && !list.some(p => p.id === sel)) { const p = phaseList().find(p => p.id === sel); if (p) list.push(p); }
+  return `<select id="${id}">${list.map(p => `<option value="${esc(p.id)}" ${p.id===sel?"selected":""}>${esc(p.name)}</option>`).join("")}<option value="" ${!sel?"selected":""}>بدون مرحلة</option></select>`;
+}
+function lastPhase(cid){
+  const e = sortEntries(S.entries.filter(x => x.clientId === cid && x.type === "out" && x.phaseId))[0];
+  return e ? e.phaseId : (activePhases()[0]?.id || "");
+}
+/* date + time: filled automatically; editors can change them */
+function whenHtml(iso){
+  const d = iso ? new Date(iso) : new Date();
+  const locked = !S.canEdit;
+  return `<div class="f2"><label class="fld"><span>التاريخ</span><input type="date" id="w-d" value="${ymd(d)}" ${locked?"disabled":""}></label><label class="fld"><span>الساعة</span><input type="time" id="w-t" value="${hm(d)}" ${locked?"disabled":""}></label></div>${locked?`<div class="stamp">التاريخ والساعة يُسجّلان تلقائيا. تعديلهما متاح للمحرّرين فقط.</div>`:""}`;
+}
+function readWhen(sh, origIso){
+  if (!S.canEdit) return origIso || new Date().toISOString();
+  const d = $("#w-d", sh).value, t = $("#w-t", sh).value || "00:00";
+  if (!d) return null;
+  const x = new Date(`${d}T${t}`);
+  return isNaN(x) ? null : x.toISOString();
+}
+
+/* ---------- receipts ---------- */
+const okFile = f => /^image\//i.test(f.type||"") || /pdf/i.test(f.type||"") || /\.(pdf|jpe?g|png)$/i.test(f.name||"");
+async function prepFile(f){
+  const type = (f.type||"").toLowerCase();
+  if (type === "application/pdf" || /\.pdf$/i.test(f.name)) return {blob:f, type:"application/pdf"};
+  const native = /^image\/(jpeg|png)$/.test(type);
+  try {
+    const bmp = await createImageBitmap(f);
+    const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const b = await new Promise(r => c.toBlob(r, "image/jpeg", 0.82));
+    if (b && (!native || b.size < f.size)) return {blob:b, type:"image/jpeg"};
+  } catch(_){}
+  if (!native) throw {code:"unsupported_type"};
+  return {blob:f, type};
+}
+async function uploadFiles(files, onStep){
+  const out = [];
+  for (let i=0;i<files.length;i++){
+    onStep && onStep(i+1, files.length);
+    const p = await prepFile(files[i]);
+    const r = await S.assets.upload(p.blob, {type:p.type});
+    out.push({id:r.id, type:r.contentType, name:files[i].name||"", size:r.sizeBytes, at:new Date().toISOString(), by:S.me||null});
+  }
+  return out;
+}
+function thumbHtml(r, eid){
+  const inner = /pdf/.test(r.type) ? `<span class="pdf">PDF</span>` : `<img src="/_blob/${esc(r.id)}" alt="فاتورة" loading="lazy">`;
+  if (eid === false) return `<div class="thumb" title="${esc(r.name||"فاتورة")}">${inner}</div>`;
+  return `<button type="button" class="thumb" data-act="receipt" data-rid="${esc(r.id)}" data-rtype="${esc(r.type)}" data-eid="${esc(eid||"")}" title="${esc(r.name||"فاتورة")}">${inner}</button>`;
+}
+function receiptPicker(label){
+  if (!S.assets) return `<div class="notice">رفع الصور يحتاج صلاحية «محرّر». سجّلوا العملية الآن، ويضيف المحرّر الصورة لاحقا.</div>`;
+  return `<div class="fld"><span>${label||"صورة أو Scan للفاتورة"}</span><div class="drop">
+    <label class="btn"><input type="file" accept="image/*" capture="environment" data-pick="1">تصوير</label>
+    <label class="btn"><input type="file" accept="image/jpeg,image/png,application/pdf" multiple data-pick="1">اختيار JPG / PNG / PDF</label>
+    <div class="thumbs pend"></div></div></div>`;
+}
+function bindPicker(sh){
+  const pend = [], urls = [];
+  modalClose = () => urls.forEach(u => URL.revokeObjectURL(u));
+  sh.addEventListener("change", ev => {
+    if (!ev.target.dataset || !ev.target.dataset.pick) return;
+    for (const f of ev.target.files){
+      if (!okFile(f)) { toast("استعملوا صورة JPG أو PNG أو ملف PDF.", true); continue; }
+      pend.push(f); const u = URL.createObjectURL(f); urls.push(u);
+      const isPdf = /pdf/i.test(f.type) || /\.pdf$/i.test(f.name);
+      const d = document.createElement("div"); d.className = "thumb"; d.innerHTML = isPdf ? `<span class="pdf">PDF</span>` : `<img alt="" src="${u}">`;
+      const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.textContent = "×"; x.setAttribute("aria-label","إزالة");
+      x.onclick = () => { const i = pend.indexOf(f); if (i>=0) pend.splice(i,1); d.remove(); };
+      d.appendChild(x); $(".pend", sh).appendChild(d);
+    }
+    ev.target.value = "";
+  });
+  return pend;
+}
+/* create or edit one transaction document; ids are fixed when the form opens so a retry can never write twice */
+async function commitEntry(o){
+  const {sh, editId, newId, data, pend, ctx} = o;
+  const btn = $("[type=submit]", sh), err = $(".err", sh), label = btn.textContent;
+  btn.disabled = true;
+  const e = editId ? byId(S.entries, editId) : null;
+  const col = e ? (e._col || "entries") : (data.clientId === OFFICE ? "office" : "entries");
+  ctx.uploaded = ctx.uploaded || [];
+  if (pend.length){
+    try { const up = await uploadFiles(pend, (i,n) => { btn.textContent = `جارٍ رفع الملف ${i} من ${n}…`; }); ctx.uploaded = ctx.uploaded.concat(up); pend.length = 0; sh.querySelectorAll(".pend .thumb").forEach(t => t.remove()); }
+    catch(x){ err.textContent = errMsg(x); btn.disabled = false; btn.textContent = label; return false; }
+  }
+  btn.textContent = "جارٍ الحفظ…";
+  const now = new Date().toISOString();
+  let ok;
+  if (e){
+    const receipts = (e.receipts||[]).concat(ctx.uploaded);
+    const prev = diff(e, data, AUDIT_KEYS);
+    const history = (e.history||[]).concat(Object.keys(prev).length || ctx.uploaded.length ? [{at:now, by:S.me||null, prev, added:ctx.uploaded.length}] : []);
+    ok = await write(() => S.db.doc(col + "/" + e.id).set({...strip(e), ...data, receipts, history, updatedAt:now, updatedBy:S.me||null}));
+  } else {
+    ok = await write(() => S.db.doc(col + "/" + newId).set({...data, receipts:ctx.uploaded, createdAt:now, createdBy:S.me||null, history:[], void:false}));
+  }
+  if (ok){ closeModal(); toast(e ? "حُفظ التعديل" : (o.okMsg || `سُجّلت العملية ${fmtDT(now)}`)); return true; }
+  btn.disabled = false; btn.textContent = label; return false;
+}
+const newEntryId = () => S.db.collection("entries").doc().id;
+
+/* ---------- chooser ---------- */
+function currentProject(){ return S.tab === "clients" && S.clientId && S.clientId !== OFFICE ? S.clientId : ""; }
+function chooser(){
+  if (!S.members.length && !S.clients.length) toast("أضيفوا الأعضاء والزبائن أولا لتسجيل العمليات بدقة.");
+  const cid = currentProject();
+  const ph = cid && S.pview === "phase" ? (S.phaseId || "none") : "";
+  openModal(`${sheetHead("عملية جديدة")}<div class="chooser">
+    <button class="ch in" data-act="pay" data-client="${esc(cid)}"><b>+ دفعة من الزبون</b><span>يرتفع رصيد المشروع</span></button>
+    <button class="ch out" data-act="expense" data-kind="material" data-client="${esc(cid)}" data-phase="${esc(ph)}"><b>+ شراء مواد</b><span>حديد، إسمنت، خرسانة…</span></button>
+    <button class="ch out" data-act="expense" data-kind="labor" data-client="${esc(cid)}" data-phase="${esc(ph)}"><b>+ دفع عامل</b><span>حرفي، عامل، مقاول من الباطن</span></button>
+    <button class="ch out" data-act="expense" data-kind="other" data-client="${esc(cid)}" data-phase="${esc(ph)}"><b>+ مصروف آخر</b><span>نقل، كراء معدات، وثائق…</span></button>
+    ${S.canEdit ? `<button class="ch acc" data-act="office-entry" data-type="out" data-cat="office"><b>مصروف للمكتب</b><span>كراء، كهرباء، هاتف… من أموال المكتب</span></button>
+    <button class="ch acc" data-act="fee" data-client="${esc(cid)}"><b>أتعاب إلى حساب المكتب</b><span>تحويل واضح من أموال المشروع</span></button>` : ""}
+    <button class="ch acc" data-act="transfer"><b>تحويل بين الأعضاء</b><span>تسليم مبلغ من شخص أو صندوق إلى آخر</span></button>
+  </div>`);
+}
+
+/* ---------- payment form ---------- */
+function paymentForm(o, editId){
+  const e = editId ? byId(S.entries, editId) : null;
+  const cid0 = e ? e.clientId : (o.clientId || defaultClient());
+  const fixed = !!(e || o.clientId);
+  const newId = e ? null : newEntryId();
+  const mm = myMember();
+  const v = e || {amount:o.amount||"", method:"cash", ref:"", note:"", memberId: mm ? mm.id : "", requestId:o.requestId || "", category:""};
+  const sh = openModal(`${sheetHead(e ? "تعديل دفعة الزبون" : "إضافة دفعة")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      ${clientField("pf-client", cid0, fixed)}
+      <label class="fld"><span>المبلغ (${esc(cur())})</span><input type="text" inputmode="decimal" id="pf-amount" class="amt-in" dir="ltr" value="${v.amount!==""?esc(String(v.amount)):""}" placeholder="0" autocomplete="off" autofocus></label>
+      <label class="fld"><span>طريقة الدفع</span>${methodSelect("pf-method", v.method)}</label>
+      <label class="fld" id="pf-req-w"><span>طلب الدفع المرتبط</span><select id="pf-req"></select></label>
+      ${e && (e.receipts||[]).length ? `<div class="fld"><span>المرفقات</span><div class="thumbs">${e.receipts.map(r => thumbHtml(r,false)).join("")}</div></div>` : ""}
+      ${receiptPicker("صورة أو Scan لوصل الدفع")}
+      ${whenHtml(e ? e.at : null)}
+      ${more(`<label class="fld"><span>رقم المرجع (شيك، تحويل…)</span><input type="text" id="pf-ref" value="${esc(v.ref||"")}" dir="auto"></label>
+        <label class="fld"><span>ملاحظات</span><textarea id="pf-note">${esc(v.note||"")}</textarea></label>
+        <div class="f2"><label class="fld"><span>من استلم المبلغ؟</span><select id="pf-member">${memberOpts(v.memberId)}</select></label>
+        <label class="fld"><span>نوع الدفعة</span><select id="pf-cat"></select></label></div>`, !!(e && (e.ref || e.note)))}
+      ${e ? `<div class="stamp">سُجّلت في ${dt(e.createdAt)} · التعديل يُحفظ في سجل التدقيق</div>` : ""}
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn in" type="submit">${e ? "حفظ التعديل" : "حفظ الدفعة"}</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  const pend = bindPicker(sh), ctx = {};
+  const cidOf = () => $("#pf-client", sh).value;
+  function syncReq(){
+    const cid = cidOf();
+    const list = S.requests.filter(r => r.clientId === cid && (isOpen(r) || r.id === v.requestId)).sort((a,b) => (a.no||0) - (b.no||0));
+    let sel = v.requestId;
+    if (!e && !o.requestId){ const first = list.find(r => r.sentAt); sel = first ? first.id : ""; }
+    $("#pf-req", sh).innerHTML = `<option value="">بدون ربط بطلب</option>` + list.map(r => `<option value="${esc(r.id)}" ${r.id===sel?"selected":""}>N°${esc(reqNo(r))} · متبقٍّ ${esc(nf.format(Math.max(r.amount - reqPaid(r.id), 0)))} ${esc(cur())}</option>`).join("");
+    $("#pf-req-w", sh).hidden = !list.length;
+    const first = !S.entries.some(x => x.clientId === cid && x.type === "in" && !x.void && x.id !== editId);
+    const cat = v.category || (first ? "advance" : "installment");
+    $("#pf-cat", sh).innerHTML = CAT.in.map(([k,l]) => `<option value="${k}" ${k===cat?"selected":""}>${l}</option>`).join("");
+  }
+  syncReq();
+  sh.addEventListener("change", ev => { if (ev.target.id === "pf-client") syncReq(); });
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh); err.textContent = "";
+    const cid = cidOf(); if (!cid) { err.textContent = "اختاروا المشروع."; return; }
+    const amount = parseNum($("#pf-amount", sh).value);
+    if (!(amount > 0)) { err.textContent = "أدخلوا مبلغا أكبر من صفر."; $("#pf-amount", sh).focus(); return; }
+    const at = readWhen(sh, e && e.at); if (!at) { err.textContent = "التاريخ أو الساعة غير صحيح."; return; }
+    const data = {type:"in", clientId:cid, amount, at, method:$("#pf-method", sh).value, requestId:$("#pf-req", sh).value || "",
+      ref:$("#pf-ref", sh).value.trim(), note:$("#pf-note", sh).value.trim(), memberId:$("#pf-member", sh).value, category:$("#pf-cat", sh).value};
+    await commitEntry({sh, editId, newId, data, pend, ctx, okMsg:`سُجّلت الدفعة · ${fmtDT(at)}`});
+  });
+}
+
+/* ---------- expense form: one component for every phase and kind ---------- */
+function expenseForm(o, editId){
+  const e = editId ? byId(S.entries, editId) : null;
+  const cid0 = e ? e.clientId : (o.clientId || defaultClient());
+  const fixed = !!(e || o.clientId);
+  const kind0 = e ? kindOf(e) : (o.kind || "material");
+  const ph0 = e ? (e.phaseId || "") : (o.phaseId != null ? o.phaseId : lastPhase(cid0));
+  const newId = e ? null : newEntryId();
+  const newWorkerId = S.db.collection("workers").doc().id;
+  const mm = myMember();
+  const v = e || {item:"", desc:"", qty:"", unit:"", unitPrice:"", amount:"", supplier:"", method:"cash", ref:"", note:"", memberId: mm ? mm.id : "", workerId:""};
+  const items = [], seenI = new Set(), sups = [], seenS = new Set();
+  for (const x of sortEntries(S.entries)){
+    if (x.type !== "out") continue;
+    if (x.item && kindOf(x) === "material" && !seenI.has(x.item)){ seenI.add(x.item); items.push(x.item); }
+    if (x.supplier && !seenS.has(x.supplier)){ seenS.add(x.supplier); sups.push(x.supplier); }
+  }
+  const workers = S.workers.slice().sort((a,b) => a.name.localeCompare(b.name, "ar"));
+  const job0 = e && e.jobId ? byId(S.jobs, e.jobId) : null;
+  const sh = openModal(`${sheetHead(e ? "تعديل المصروف" : "إضافة مصروف")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      <div class="seg" role="radiogroup" aria-label="نوع المصروف">
+        <label><input type="radio" name="xk" value="material" ${kind0==="material"?"checked":""}><span class="out">مواد</span></label>
+        <label><input type="radio" name="xk" value="labor" ${kind0==="labor"?"checked":""}><span class="out">يد عاملة</span></label>
+        <label><input type="radio" name="xk" value="other" ${kind0==="other"?"checked":""}><span class="out">أخرى</span></label>
+      </div>
+      ${clientField("xf-client", cid0, fixed)}
+      <label class="fld"><span>المرحلة</span>${phaseSelect("xf-phase", ph0)}</label>
+      <div class="k-material" style="display:flex;flex-direction:column;gap:12px">
+        <label class="fld"><span>اسم المادة</span><input type="text" id="xf-item" list="dl-items" value="${esc(kind0==="material"?v.item||"":"")}" placeholder="مثال: حديد Ø12" autocomplete="off"></label>
+        <div class="f2"><label class="fld"><span>الكمية</span><input type="text" inputmode="decimal" dir="ltr" id="xf-qty" value="${esc(v.qty??"")}" placeholder="70"></label>
+        <label class="fld"><span>الوحدة</span><input type="text" id="xf-unit" list="dl-units" value="${esc(v.unit||"")}" placeholder="قضيب، كيس، m³…"></label></div>
+        <label class="fld"><span>سعر الوحدة (${esc(cur())})</span><input type="text" inputmode="decimal" dir="ltr" id="xf-price" value="${esc(v.unitPrice??"")}" placeholder="1 250"></label>
+      </div>
+      <div class="k-labor" style="display:flex;flex-direction:column;gap:12px">
+        <label class="fld"><span>العامل / الحرفي / المقاول</span><select id="xf-worker"><option value="">— اختر العامل —</option>${workers.map(w => `<option value="${esc(w.id)}" ${w.id===v.workerId?"selected":""}>${esc(w.name)}${w.specialty?" · "+esc(w.specialty):""}</option>`).join("")}<option value="__new">+ عامل جديد</option></select></label>
+        <div class="f2 new-w"><label class="fld"><span>اسم العامل الجديد</span><input type="text" id="xf-wname" autocomplete="off"></label><label class="fld"><span>التخصص</span><input type="text" id="xf-wspec" list="dl-spec" placeholder="حداد، بنّاء…"></label></div>
+        <div class="f2"><label class="fld"><span>وصف العمل</span><input type="text" id="xf-jdesc" value="${esc(job0?job0.desc||"":"")}" placeholder="مثال: تسليح الأساسات"></label>
+        <label class="fld"><span>المبلغ المتفق عليه (إن وجد)</span><input type="text" inputmode="decimal" dir="ltr" id="xf-agreed" value="${esc(job0&&job0.agreed?job0.agreed:"")}" placeholder="100 000"></label></div>
+        <div class="calc" id="xf-calc"></div>
+      </div>
+      <div class="k-other"><label class="fld"><span>البيان</span><input type="text" id="xf-odesc" value="${esc(kind0==="other"?v.item||"":"")}" placeholder="مثال: نقل الرمل، كراء خلاطة"></label></div>
+      <label class="fld"><span id="xf-amount-l">المبلغ الإجمالي (${esc(cur())})</span><input type="text" inputmode="decimal" dir="ltr" id="xf-amount" class="amt-in" value="${v.amount!==""?esc(String(v.amount)):""}" placeholder="0" autocomplete="off"></label>
+      <div class="f2"><label class="fld k-sup"><span>المورد</span><input type="text" id="xf-sup" list="dl-sup" value="${esc(v.supplier||"")}" autocomplete="off"></label>
+      <label class="fld"><span>طريقة الدفع</span>${methodSelect("xf-method", v.method)}</label></div>
+      ${e && (e.receipts||[]).length ? `<div class="fld"><span>المرفقات</span><div class="thumbs">${e.receipts.map(r => thumbHtml(r,false)).join("")}</div></div>` : ""}
+      ${receiptPicker()}
+      ${whenHtml(e ? e.at : null)}
+      ${more(`<label class="fld k-desc"><span>وصف اختياري</span><input type="text" id="xf-desc" value="${esc(kind0==="material"?v.desc||"":"")}"></label>
+        <div class="f2"><label class="fld"><span>رقم الفاتورة</span><input type="text" id="xf-ref" value="${esc(v.ref||"")}" dir="auto"></label>
+        <label class="fld"><span>من دفع المبلغ؟</span><select id="xf-member">${memberOpts(v.memberId)}</select></label></div>
+        <label class="fld new-w"><span>هاتف العامل</span><input type="tel" dir="ltr" id="xf-wphone"></label>
+        <label class="fld"><span>ملاحظات</span><textarea id="xf-note">${esc(v.note||"")}</textarea></label>`, !!(e && (e.ref || e.note || e.desc)))}
+      <datalist id="dl-items">${items.slice(0,200).map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+      <datalist id="dl-units">${UNITS.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+      <datalist id="dl-sup">${sups.slice(0,200).map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+      <datalist id="dl-spec">${SPECIALTIES.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+      ${e ? `<div class="stamp">سُجّل في ${dt(e.createdAt)} · التعديل يُحفظ في سجل التدقيق</div>` : ""}
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn out" type="submit">${e ? "حفظ التعديل" : "حفظ المصروف"}</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  const pend = bindPicker(sh), ctx = {};
+  const kindNow = () => (sh.querySelector("input[name=xk]:checked")||{}).value || "material";
+  const val = id => $("#"+id, sh).value;
+  function jobNow(){ const w = val("xf-worker"); if (!w || w === "__new") return null; return byId(S.jobs, jobKey(val("xf-client"), val("xf-phase"), w)); }
+  function sync(){
+    const k = kindNow();
+    sh.querySelectorAll(".k-material").forEach(x => x.hidden = k !== "material");
+    sh.querySelectorAll(".k-labor").forEach(x => x.hidden = k !== "labor");
+    sh.querySelectorAll(".k-other").forEach(x => x.hidden = k !== "other");
+    sh.querySelectorAll(".k-desc").forEach(x => x.hidden = k !== "material");
+    sh.querySelectorAll(".k-sup").forEach(x => x.hidden = k === "labor");
+    const isNew = val("xf-worker") === "__new";
+    sh.querySelectorAll(".new-w").forEach(x => x.hidden = !(k === "labor" && isNew));
+    $("#xf-amount-l", sh).textContent = (k === "labor" ? "الدفعة الحالية" : "المبلغ الإجمالي") + ` (${cur()})`;
+    calc();
+  }
+  function calc(){
+    const k = kindNow();
+    const a = $("#xf-amount", sh);
+    if (k === "material"){
+      const q = parseNum(val("xf-qty")), p = parseNum(val("xf-price"));
+      if (q > 0 && p > 0){ a.value = String(Math.round(q*p*100)/100); a.readOnly = true; a.title = "محسوب تلقائيا: الكمية × سعر الوحدة"; }
+      else { a.readOnly = false; a.title = ""; }
+    } else { a.readOnly = false; a.title = ""; }
+    if (k === "labor"){
+      const j = jobNow();
+      const agreed = parseNum(val("xf-agreed")) || 0;
+      const before = j ? jobPaid(j.id, editId) : 0;
+      const now = parseNum(val("xf-amount")) || 0;
+      const after = before + now;
+      $("#xf-calc", sh).innerHTML = `<div><span>المتفق عليه</span><b>${agreed ? money(agreed) : "—"}</b></div><div><span>قبض سابقا</span><b>${money(before)}</b></div><div><span>الدفعة الحالية</span><b>${money(now)}</b></div><div class="hl"><span>إجمالي المقبوض بعدها</span><b>${money(after)}</b></div><div><span>المتبقي له</span><b class="${agreed && agreed-after<0?"neg":""}">${agreed ? money(agreed - after) : "—"}</b></div>`;
+    }
+  }
+  function onWorkerOrPhase(){
+    const j = jobNow();
+    if (j){ $("#xf-jdesc", sh).value = j.desc || ""; $("#xf-agreed", sh).value = j.agreed || ""; }
+    else if (!e){ $("#xf-jdesc", sh).value = ""; $("#xf-agreed", sh).value = ""; }
+    sync();
+  }
+  sync();
+  sh.addEventListener("change", ev => {
+    const id = ev.target.id;
+    if (ev.target.name === "xk") sync();
+    else if (id === "xf-worker" || id === "xf-phase" || id === "xf-client") onWorkerOrPhase();
+    else if (id === "xf-item"){
+      const last = sortEntries(S.entries).find(x => x.type === "out" && x.item === ev.target.value && x.unitPrice);
+      if (last){ if (!val("xf-unit")) $("#xf-unit", sh).value = last.unit || ""; if (!val("xf-price")) $("#xf-price", sh).value = last.unitPrice; if (!val("xf-sup") && last.supplier) $("#xf-sup", sh).value = last.supplier; calc(); }
+    }
+  });
+  sh.addEventListener("input", ev => { if (["xf-qty","xf-price","xf-amount","xf-agreed"].includes(ev.target.id)) calc(); });
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh); err.textContent = "";
+    const btn = $("[type=submit]", sh);
+    if (btn.disabled) return;
+    const k = kindNow(), cid = val("xf-client"), ph = val("xf-phase");
+    if (!cid) { err.textContent = "اختاروا المشروع."; return; }
+    const amount = parseNum(val("xf-amount"));
+    if (!(amount > 0)) { err.textContent = k === "labor" ? "أدخلوا مبلغ الدفعة الحالية." : "أدخلوا المبلغ، أو الكمية وسعر الوحدة."; return; }
+    const at = readWhen(sh, e && e.at); if (!at) { err.textContent = "التاريخ أو الساعة غير صحيح."; return; }
+    const base = {type:"out", kind:k, clientId:cid, phaseId:ph, amount, at, method:val("xf-method"), ref:val("xf-ref").trim(), note:val("xf-note").trim(), memberId:val("xf-member"),
+      item:"", desc:"", qty:"", unit:"", unitPrice:"", supplier:"", workerId:"", jobId:"", category: k === "material" ? "materials" : k === "labor" ? "labor" : "other_out"};
+    if (k === "material"){
+      const item = val("xf-item").trim(); if (!item) { err.textContent = "اكتبوا اسم المادة."; return; }
+      const q = parseNum(val("xf-qty")), p = parseNum(val("xf-price"));
+      Object.assign(base, {item, desc:val("xf-desc").trim(), qty: q > 0 ? q : "", unit:val("xf-unit").trim(), unitPrice: p > 0 ? p : "", supplier:val("xf-sup").trim()});
+    } else if (k === "other"){
+      const item = val("xf-odesc").trim(); if (!item) { err.textContent = "اكتبوا بيان المصروف."; return; }
+      Object.assign(base, {item, supplier:val("xf-sup").trim()});
+    } else {
+      let wid = val("xf-worker");
+      if (!wid) { err.textContent = "اختاروا العامل أو أضيفوا عاملا جديدا."; return; }
+      const agreedRaw = val("xf-agreed").trim(); const agreed = agreedRaw ? parseNum(agreedRaw) : 0;
+      if (agreedRaw && !(agreed >= 0)) { err.textContent = "المبلغ المتفق عليه غير صحيح."; return; }
+      btn.disabled = true;
+      const now = new Date().toISOString();
+      if (wid === "__new"){
+        const name = val("xf-wname").trim(); if (!name) { err.textContent = "اكتبوا اسم العامل الجديد."; btn.disabled = false; return; }
+        const same = S.workers.find(w => w.name.trim() === name && w.id !== newWorkerId);
+        if (same && !ctx.confirmDup){ ctx.confirmDup = true; err.textContent = `يوجد عامل باسم «${name}». اختاروه من القائمة، أو اضغطوا حفظ مرة أخرى لإضافة عامل جديد بنفس الاسم.`; btn.disabled = false; return; }
+        if (!byId(S.workers, newWorkerId)){
+          if (!await write(() => S.db.doc("workers/" + newWorkerId).set({name, specialty:val("xf-wspec").trim(), phone:val("xf-wphone").trim(), notes:"", createdAt:now, createdBy:S.me||null, history:[]}))) { btn.disabled = false; return; }
+        }
+        wid = newWorkerId;
+      }
+      const jid = jobKey(cid, ph, wid), job = byId(S.jobs, jid), desc = val("xf-jdesc").trim();
+      if (!job){
+        if (!await write(() => S.db.doc("jobs/" + jid).set({workerId:wid, clientId:cid, phaseId:ph, desc, agreed, createdAt:now, createdBy:S.me||null, history:[]}))) { btn.disabled = false; return; }
+      } else if ((Number(job.agreed)||0) !== agreed || (job.desc||"") !== desc){
+        const prev = diff(job, {agreed, desc}, ["agreed","desc"]);
+        if (!await write(() => S.db.doc("jobs/" + jid).update({agreed, desc, updatedAt:now, updatedBy:S.me||null, history:(job.history||[]).concat([{at:now, by:S.me||null, prev}])}))) { btn.disabled = false; return; }
+      }
+      btn.disabled = false;
+      Object.assign(base, {workerId:wid, jobId:jid, desc});
+    }
+    await commitEntry({sh, editId, newId, data:base, pend, ctx, okMsg:`سُجّل المصروف · ${fmtDT(at)}`});
+  });
+}
+
+/* ---------- fee: client funds -> office funds ---------- */
+function feeForm(o, editId){
+  const e = editId ? byId(S.entries, editId) : null;
+  const cid0 = e ? e.clientId : (o.clientId || defaultClient());
+  const fixed = !!(e || o.clientId);
+  const newId = e ? null : newEntryId();
+  const sh = openModal(`${sheetHead(e ? "تعديل تحويل الأتعاب" : "تحويل أتعاب إلى حساب المكتب")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      <div class="notice">ينقص المبلغ من رصيد المشروع ويُضاف إلى حساب المكتب، ويظهر في سجل الحسابين.</div>
+      ${clientField("ff-client", cid0, fixed)}
+      <div class="stamp" id="ff-bal"></div>
+      <label class="fld"><span>نوع الأتعاب</span><select id="ff-kind">${FEES.map(([k,l]) => `<option value="${k}" ${(e&&e.feeKind)===k?"selected":""}>${l}</option>`).join("")}</select></label>
+      <label class="fld"><span>المبلغ (${esc(cur())})</span><input type="text" inputmode="decimal" dir="ltr" id="ff-amount" class="amt-in" value="${e?esc(String(e.amount)):""}" autofocus></label>
+      ${whenHtml(e ? e.at : null)}
+      <label class="fld"><span>ملاحظات</span><textarea id="ff-note">${esc(e ? e.note||"" : "")}</textarea></label>
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn pri" type="submit">${e ? "حفظ التعديل" : "تسجيل التحويل"}</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  const ctx = {};
+  const showBal = () => { const cid = $("#ff-client", sh).value; $("#ff-bal", sh).innerHTML = cid ? `رصيد المشروع الحالي: ${money(projStats(cid).bal + (e ? e.amount : 0))}` : ""; };
+  showBal(); sh.addEventListener("change", ev => { if (ev.target.id === "ff-client") { ctx.warned = false; showBal(); } });
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh); err.textContent = "";
+    const cid = $("#ff-client", sh).value; if (!cid) { err.textContent = "اختاروا المشروع."; return; }
+    const amount = parseNum($("#ff-amount", sh).value); if (!(amount > 0)) { err.textContent = "أدخلوا مبلغا أكبر من صفر."; return; }
+    const bal = projStats(cid).bal + (e && !e.void ? e.amount : 0);
+    if (amount > bal && !ctx.warned){ ctx.warned = true; err.textContent = "المبلغ أكبر من رصيد المشروع، وسيصبح الرصيد سالبا. اضغطوا مرة أخرى للتأكيد."; return; }
+    const at = readWhen(sh, e && e.at); if (!at) { err.textContent = "التاريخ أو الساعة غير صحيح."; return; }
+    const data = {type:"fee", category:"fee", clientId:cid, feeKind:$("#ff-kind", sh).value, amount, at, note:$("#ff-note", sh).value.trim(), method:"other", memberId:"", phaseId:""};
+    await commitEntry({sh, editId, newId, data, pend:[], ctx, okMsg:"سُجّل تحويل الأتعاب إلى حساب المكتب"});
+  });
+}
+
+/* ---------- office income/expense and transfers between members ---------- */
+function entryForm(pre, editId){
+  const e = editId ? byId(S.entries, editId) : null;
+  const mm = myMember();
+  const newId = e ? null : newEntryId();
+  const officeOk = S.canEdit;
+  const v = e ? {...e} : {type: officeOk ? (pre.type||"out") : "transfer", amount:"", category:pre.category||"", memberId: mm?mm.id:"", method:"cash", ref:"", supplier:"", note:"", fromId: mm?mm.id:"", toId:"", beneficiaryId:""};
+  const pOpts = sel => `<option value="">— اختر الشريك —</option>` + S.members.filter(m=>m.kind==="partner").map(m => `<option value="${esc(m.id)}" ${sel===m.id?"selected":""}>${esc(m.name)}</option>`).join("");
+  const sh = openModal(`${sheetHead(e ? "تعديل العملية" : officeOk ? (v.category === "draw" ? "سحب أرباح شريك" : "عملية للمكتب") : "تحويل بين الأعضاء")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      <div class="seg" role="radiogroup" aria-label="نوع العملية" ${officeOk?"":"hidden"}>
+        <label><input type="radio" name="ef-type" value="in" ${v.type==="in"?"checked":""}><span class="in">دخل للمكتب</span></label>
+        <label><input type="radio" name="ef-type" value="out" ${v.type==="out"?"checked":""}><span class="out">مصروف أو سحب</span></label>
+        <label><input type="radio" name="ef-type" value="transfer" ${v.type==="transfer"?"checked":""}><span class="transfer">تحويل داخلي</span></label>
+      </div>
+      <label class="fld"><span>المبلغ (${esc(cur())})</span><input type="text" inputmode="decimal" id="ef-amount" class="amt-in" dir="ltr" value="${v.amount!==""?esc(String(v.amount)):""}" placeholder="0" autocomplete="off" autofocus></label>
+      <label class="fld f-io"><span>الصنف</span><select id="ef-cat"></select></label>
+      <label class="fld f-benef"><span>الشريك الذي سحب المبلغ</span><select id="ef-benef">${pOpts(v.beneficiaryId)}</select></label>
+      <div class="f2 f-io">
+        <label class="fld"><span id="ef-mlabel">من استلم المبلغ؟</span><select id="ef-member">${memberOpts(v.memberId)}</select></label>
+        <label class="fld"><span>طريقة الدفع</span>${methodSelect("ef-method", v.method)}</label>
+      </div>
+      <div class="f2 f-tr">
+        <label class="fld"><span>من (سلّم المبلغ)</span><select id="ef-from">${memberOpts(v.fromId)}</select></label>
+        <label class="fld"><span>إلى (استلم المبلغ)</span><select id="ef-to">${memberOpts(v.toId)}</select></label>
+      </div>
+      ${e && (e.receipts||[]).length ? `<div class="fld"><span>المرفقات</span><div class="thumbs">${e.receipts.map(r => thumbHtml(r,false)).join("")}</div></div>` : ""}
+      ${receiptPicker()}
+      ${whenHtml(e ? e.at : null)}
+      ${more(`<div class="f2"><label class="fld f-sup"><span>المورد / الجهة</span><input type="text" id="ef-sup" value="${esc(v.supplier||"")}"></label>
+        <label class="fld"><span>رقم الفاتورة أو الشيك</span><input type="text" id="ef-ref" value="${esc(v.ref||"")}" dir="auto"></label></div>
+        <label class="fld"><span>ملاحظة</span><textarea id="ef-note">${esc(v.note||"")}</textarea></label>`, !!(e && (e.note || e.ref || e.supplier)))}
+      ${e ? `<div class="stamp">سُجّلت في ${dt(e.createdAt)} · التعديل يُحفظ في سجل التدقيق</div>` : ""}
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn pri" type="submit">${e ? "حفظ التعديل" : "حفظ العملية"}</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  const pend = bindPicker(sh), ctx = {};
+  const typeOf = () => (sh.querySelector("input[name=ef-type]:checked")||{}).value || "out";
+  let lastCat = v.category;
+  function sync(){
+    const t = typeOf();
+    const opts = t === "in" ? OFFICE_IN : t === "out" ? OFFICE_OUT : [];
+    const all = lastCat && !opts.some(x => x[0] === lastCat) && t !== "transfer" && e && e.type === t ? opts.concat([[lastCat, CAT_LABEL[lastCat]||lastCat]]) : opts;
+    $("#ef-cat", sh).innerHTML = all.map(([k,l]) => `<option value="${k}" ${lastCat===k?"selected":""}>${l}</option>`).join("");
+    sh.querySelectorAll(".f-io").forEach(el => el.hidden = t === "transfer");
+    sh.querySelectorAll(".f-tr").forEach(el => el.hidden = t !== "transfer");
+    $(".f-sup", sh).hidden = t !== "out";
+    $(".f-benef", sh).hidden = !(t === "out" && $("#ef-cat", sh).value === "draw");
+    $("#ef-mlabel", sh).textContent = t === "in" ? "من استلم المبلغ؟" : $("#ef-cat", sh).value === "draw" ? "من سلّم المبلغ (صندوق أو شريك)؟" : "من دفع أو سحب المبلغ؟";
+  }
+  sync();
+  sh.addEventListener("change", ev => {
+    if (ev.target.name === "ef-type") { lastCat = ""; sync(); }
+    else if (ev.target.id === "ef-cat") { lastCat = ev.target.value; sync(); }
+  });
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh); err.textContent = "";
+    const t = typeOf();
+    const amount = parseNum($("#ef-amount", sh).value);
+    if (!(amount > 0)) { err.textContent = "أدخلوا مبلغا أكبر من صفر."; $("#ef-amount", sh).focus(); return; }
+    const at = readWhen(sh, e && e.at); if (!at) { err.textContent = "التاريخ أو الساعة غير صحيح."; return; }
+    const d = {type:t, amount, at, method:$("#ef-method", sh).value, ref:$("#ef-ref", sh).value.trim(), note:$("#ef-note", sh).value.trim()};
+    if (t === "transfer"){
+      d.fromId = $("#ef-from", sh).value; d.toId = $("#ef-to", sh).value;
+      if (!d.fromId || !d.toId) { err.textContent = "اختاروا من سلّم المبلغ ومن استلمه."; return; }
+      if (d.fromId === d.toId) { err.textContent = "لا يمكن التحويل من الشخص إلى نفسه."; return; }
+      Object.assign(d, {clientId:"", category:"transfer", memberId:"", supplier:"", beneficiaryId:""});
+    } else {
+      Object.assign(d, {clientId:OFFICE, category:$("#ef-cat", sh).value, memberId:$("#ef-member", sh).value, supplier: t === "out" ? $("#ef-sup", sh).value.trim() : "", fromId:"", toId:""});
+      d.beneficiaryId = (t === "out" && d.category === "draw") ? $("#ef-benef", sh).value : "";
+      if (d.category === "draw" && !d.beneficiaryId) { err.textContent = "اختاروا الشريك الذي سحب المبلغ."; return; }
+    }
+    await commitEntry({sh, editId, newId, data:d, pend, ctx});
+  });
+}
+function editEntry(id){
+  const e = byId(S.entries, id); if (!e) return;
+  if (e.type === "fee") return feeForm({}, id);
+  if (e.type === "in" && e.clientId && e.clientId !== OFFICE) return paymentForm({}, id);
+  if (e.type === "out" && e.clientId && e.clientId !== OFFICE) return expenseForm({}, id);
+  return entryForm({}, id);
+}
+
+/* ---------- entry detail ---------- */
+function entryDetail(id){
+  const e = byId(S.entries, id); if (!e) return;
+  const rows = [];
+  rows.push(["النوع", esc(e.type === "out" && e.clientId !== OFFICE ? `مصروف · ${XKIND[kindOf(e)]}` : (TYPE_LABEL[e.type]||""))]);
+  if (e.type === "transfer"){ rows.push(["من", esc(memberName(e.fromId))]); rows.push(["إلى", esc(memberName(e.toId))]); }
+  else if (e.type === "fee"){ rows.push(["من حساب", esc(clientName(e.clientId))]); rows.push(["إلى", "حساب المكتب"]); rows.push(["نوع الأتعاب", esc(FEE_LABEL[e.feeKind]||"")]); }
+  else {
+    rows.push(["الحساب", esc(clientName(e.clientId))]);
+    if (e.type === "out" && e.clientId !== OFFICE) rows.push(["المرحلة", esc(phaseName(e.phaseId))]);
+    if (e.item) rows.push(["البيان", esc(e.item)]);
+    if (e.desc) rows.push(["الوصف", esc(e.desc)]);
+    if (e.qty) rows.push(["الكمية", `${esc(nf.format(e.qty))} ${esc(e.unit||"")}${e.unitPrice ? ` × ${money(e.unitPrice)}` : ""}`]);
+    if (e.workerId){
+      const w = byId(S.workers, e.workerId);
+      rows.push(["العامل", `<button class="btn ghost" data-act="worker" data-id="${esc(e.workerId)}" style="padding:0">${esc(w ? w.name : "عامل")}</button>${w && w.specialty ? " · " + esc(w.specialty) : ""}`]);
+      const j = e.jobId && byId(S.jobs, e.jobId);
+      if (j){ const a = Number(j.agreed)||0, p = jobPaid(j.id); rows.push(["العمل", `${esc(j.desc||"")}${a ? ` · المتفق عليه ${money(a)} · المقبوض ${money(p)} · المتبقي ${money(a-p)}` : ` · المقبوض ${money(p)}`}`]); }
+    }
+    if (e.requestId){ const r = byId(S.requests, e.requestId); if (r) rows.push(["طلب الدفع", `N°${esc(reqNo(r))}`]); }
+    if (e.category && !e.kind && e.type !== "in") rows.push(["الصنف", esc(CAT_LABEL[e.category]||"")]);
+    if (e.beneficiaryId) rows.push(["لفائدة الشريك", esc(memberName(e.beneficiaryId))]);
+    if (e.memberId) rows.push([e.type==="in"?"استلمها":"دفعها", esc(memberName(e.memberId))]);
+    if (e.supplier) rows.push(["المورد", esc(e.supplier)]);
+    rows.push(["طريقة الدفع", esc(METHOD_LABEL[e.method]||"")]);
+  }
+  if (e.ref) rows.push(["رقم الفاتورة / المرجع", `<span dir="auto">${esc(e.ref)}</span>`]);
+  rows.push(["تاريخ العملية", dt(e.at)]);
+  rows.push(["سُجّلت في", `${dt(e.createdAt)} · ${esc(personName(e.createdBy))}`]);
+  if (e.updatedAt) rows.push(["آخر تعديل", `${dt(e.updatedAt)} · ${esc(personName(e.updatedBy))}`]);
+  const hist = (e.history||[]).map(h => `<div>${dt(h.at)} · ${esc(personName(h.by))}: ${histText(h)}</div>`).join("");
+  const sign = e.type === "in" ? "in" : e.type === "transfer" ? null : "out";
+  const sh = openModal(`${sheetHead(`${esc(e.type==="fee"?"تحويل أتعاب":TYPE_LABEL[e.type])} ${e.void?'<span class="pill void">ملغاة</span>':""}`)}
+    <div class="${sign==="in"?"pos":sign==="out"?"neg":""}" style="font-size:1.7rem;font-weight:700">${money(e.amount, sign)}</div>
+    <div>${opTitle(e)}</div>
+    ${e.type==="fee"?`<div class="notice">هذه عملية واحدة تظهر في سجل المشروع (خصم) وفي سجل حساب المكتب (إضافة).</div>`:""}
+    ${e.void?`<div class="alert bad"><div><b>ملغاة</b> في ${dt(e.voidAt)} من طرف ${esc(personName(e.voidBy))}. السبب: ${esc(e.voidReason||"")}<br>لا تُحسب في المجاميع وتبقى في السجل.</div></div>`:""}
+    <dl class="kv">${rows.map(([k,v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+    ${e.note?`<div class="notice">${esc(e.note)}</div>`:""}
+    <div class="fld"><span>المرفقات (${(e.receipts||[]).length})</span>
+      ${(e.receipts||[]).length?`<div class="thumbs">${e.receipts.map(r=>thumbHtml(r,e.id)).join("")}</div>`:`<span class="muted" style="font-size:.88rem">لا يوجد مرفق.</span>`}
+      ${S.assets && !S.readOnly ? `<div class="row"><label class="btn"><input type="file" accept="image/*" capture="environment" data-attach="${esc(e.id)}" hidden>تصوير</label><label class="btn"><input type="file" accept="image/jpeg,image/png,application/pdf" multiple data-attach="${esc(e.id)}" hidden>إرفاق ملف</label><span class="muted" id="att-st" style="font-size:.85rem"></span></div>`:""}
+    </div>
+    ${hist?`<div class="hist"><b>سجل التغييرات</b>${hist}</div>`:""}
+    <div id="void-box"></div>
+    ${S.readOnly?"":`<div class="foot">${e.void?`<button class="btn" data-act="restore" data-id="${esc(e.id)}">إعادة تفعيل العملية</button>`:`<button class="btn pri" data-act="edit-entry" data-id="${esc(e.id)}">تعديل</button><button class="btn danger" data-act="void" data-id="${esc(e.id)}">إلغاء العملية</button>`}</div>`}`);
+  sh.addEventListener("change", async ev => {
+    const eid = ev.target.dataset.attach; if (!eid) return;
+    const files = [...ev.target.files].filter(okFile); ev.target.value = ""; if (!files.length) return;
+    const st = $("#att-st", sh);
+    try {
+      const up = await uploadFiles(files, (i,n) => { st.textContent = `جارٍ رفع ${i} من ${n}…`; });
+      const cur0 = byId(S.entries, eid); const now = new Date().toISOString();
+      const ok = await write(() => S.db.doc(epath(cur0)).update({receipts:(cur0.receipts||[]).concat(up), history:(cur0.history||[]).concat([{at:now, by:S.me||null, prev:{}, added:up.length}])}));
+      if (ok){ toast("أُرفق الملف"); await until(() => (byId(S.entries, eid)?.receipts||[]).length >= (cur0.receipts||[]).length + up.length); entryDetail(eid); }
+    } catch(x){ st.textContent = errMsg(x); }
+  });
+}
+function voidBox(id){
+  const box = $("#void-box"); if (!box) return;
+  box.innerHTML = `<div class="card" style="border-color:var(--out)"><label class="fld"><span>سبب الإلغاء (يبقى ظاهرا في السجل)</span><input type="text" id="void-r" placeholder="مثال: مسجّلة مرتين"></label><div class="err" id="void-err"></div><div class="row"><button class="btn out" data-act="void-ok" data-id="${esc(id)}">تأكيد الإلغاء</button><button class="btn" data-act="void-no">تراجع</button></div></div>`;
+  $("#void-r").focus();
+}
+
+/* ---------- payment requests ---------- */
+function requestForm(cid, editId){
+  const r = editId ? byId(S.requests, editId) : null;
+  cid = r ? r.clientId : (cid || defaultClient());
+  const fixed = !!(r || cid);
+  const sug = cid ? Math.max(suggestAmount(cid) - outstanding(cid), 0) : 0;
+  const due = new Date(); due.setDate(due.getDate() + 7);
+  const v = r || {amount: sug || "", reason: DEFAULT_REASON, notes:"", date: todayStr(), due: ymd(due)};
+  const nextNo = String(S.requests.reduce((m,x) => Math.max(m, x.no||0), 0) + 1).padStart(3,"0");
+  const sh = openModal(`${sheetHead(r ? `تعديل طلب الدفعة N°${esc(reqNo(r))}` : "طلب دفعة من العميل")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      ${clientField("rf-client", cid, fixed)}
+      <div class="calc" id="rf-info"></div>
+      <label class="fld"><span>المبلغ المطلوب (${esc(cur())})</span><input type="text" inputmode="decimal" dir="ltr" id="rf-amount" class="amt-in" value="${esc(String(v.amount))}" autofocus></label>
+      <label class="fld"><span>سبب طلب الدفعة (Objet)</span><input type="text" id="rf-reason" value="${esc(v.reason||"")}" dir="auto"></label>
+      <div class="f2"><label class="fld"><span>تاريخ الوثيقة</span><input type="date" id="rf-date" value="${esc(v.date||todayStr())}"></label><label class="fld"><span>تاريخ الاستحقاق</span><input type="date" id="rf-due" value="${esc(v.due||"")}"></label></div>
+      <label class="fld"><span>ملاحظات</span><textarea id="rf-notes" dir="auto">${esc(v.notes||"")}</textarea></label>
+      <div class="stamp">${S.settings.payInfo ? "بيانات الدفع الخاصة بالمكتب تُضاف تلقائيا إلى الوثيقة." : "لم تُضف بيانات الدفع الخاصة بالمكتب بعد. أضيفوها من الإعدادات لتظهر في الوثيقة."}</div>
+      <div class="stamp">لا يُرسل أي شيء إلى العميل تلقائيا. تُنشئون الوثيقة ثم ترسلونها بأنفسكم وتحدّدونها كمُرسَلة.</div>
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn pri" type="submit" value="pdf">${r ? "حفظ وعرض PDF" : "إنشاء الطلب وعرض PDF"}</button><button class="btn" type="submit" value="draft">${r ? "حفظ" : "حفظ كمسودة"}</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  function info(){
+    const c = $("#rf-client", sh).value;
+    if (!c){ $("#rf-info", sh).innerHTML = ""; return; }
+    const st = projStats(c), ob = outstanding(c) - (r && isOpen(r) ? Math.max(r.amount - reqPaid(r.id), 0) : 0);
+    $("#rf-info", sh).innerHTML = `<div><span>رقم الوثيقة</span><b>N°${r ? esc(reqNo(r)) : nextNo}</b></div><div><span>الرصيد الحالي</span><b>${money(st.bal)}</b></div><div><span>نسبة الرصيد</span><b><span class="num" dir="ltr">${pctTxt(st.pct)}</span></b></div><div><span>آخر دفعة</span><b>${st.last ? money(st.last.amount) : "—"}</b></div>${ob>0?`<div><span>طلبات مفتوحة غير مدفوعة</span><b>${money(ob)}</b></div>`:""}`;
+    if (!r && !fixed){ const s = Math.max(suggestAmount(c) - outstanding(c), 0); if (s) $("#rf-amount", sh).value = String(s); }
+  }
+  info(); sh.addEventListener("change", ev => { if (ev.target.id === "rf-client") info(); });
+  let mode = "pdf";
+  sh.querySelectorAll("[type=submit]").forEach(b => b.addEventListener("click", () => { mode = b.value; }));
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh); err.textContent = "";
+    if (sh.dataset.busy) return;
+    const c = $("#rf-client", sh).value; if (!c) { err.textContent = "اختاروا المشروع."; return; }
+    const amount = parseNum($("#rf-amount", sh).value); if (!(amount > 0)) { err.textContent = "أدخلوا المبلغ المطلوب."; return; }
+    const date = $("#rf-date", sh).value || todayStr();
+    const st = projStats(c);
+    const data = {clientId:c, amount, reason:$("#rf-reason", sh).value.trim() || DEFAULT_REASON, notes:$("#rf-notes", sh).value.trim(), date, due:$("#rf-due", sh).value || "",
+      snap:{paid:st.paid, spent:st.out, bal:st.bal, contract:st.contract}};
+    sh.dataset.busy = "1"; sh.querySelectorAll("[type=submit]").forEach(b => b.disabled = true);
+    const now = new Date().toISOString();
+    let id = r && r.id;
+    try {
+      if (r){
+        const prev = diff(r, data, ["amount","reason","notes","date","due"]);
+        if (!await write(() => S.db.doc("requests/" + r.id).update({...data, updatedAt:now, updatedBy:S.me||null, history:(r.history||[]).concat(Object.keys(prev).length ? [{at:now, by:S.me||null, prev}] : [])}))) throw null;
+      } else {
+        id = await createRequest(data);
+      }
+    } catch(x){ if (x) err.textContent = errMsg(x); delete sh.dataset.busy; sh.querySelectorAll("[type=submit]").forEach(b => b.disabled = false); return; }
+    closeModal();
+    toast(r ? "حُفظ الطلب" : "أُنشئ طلب الدفعة");
+    const since = r && r.updatedAt;
+    await until(() => { const x = byId(S.requests, id); return x && (!r || x.updatedAt !== since); });
+    if (mode === "pdf") showPdf(id); else requestDetail(id);
+  });
+}
+/* sequential numbers: a short lease on counters/requests serialises numbering across devices, and the document id is the number itself */
+async function createRequest(data){
+  const lease = S.db.doc("counters/requests");
+  let got = false;
+  for (let i = 0; i < 6 && !got; i++){ const a = await lease.acquire({holder:TAB_ID, ttlMs:10000}); got = a.acquired; if (!got) await sleep(800); }
+  if (!got) throw {code:"busy"};
+  const snap = await S.db.collection("requests").get();
+  let no = 0; for (const d of snap.docs) no = Math.max(no, Number(d.data().no) || 0);
+  no++;
+  let id;
+  for (;;){ id = "r" + String(no).padStart(4,"0"); const ex = await S.db.doc("requests/" + id).get(); if (!ex.exists) break; no++; }
+  await S.db.doc("requests/" + id).set({...data, no, sentAt:"", cancelled:false, pdfs:[], createdAt:new Date().toISOString(), createdBy:S.me||null, history:[]});
+  return id;
+}
+function requestDetail(id){
+  const r = byId(S.requests, id); if (!r) return;
+  const s = reqStatus(r), p = reqPaid(r.id);
+  const pays = sortEntries(S.entries.filter(e => e.type === "in" && e.requestId === r.id));
+  const hist = (r.history||[]).map(h => `<div>${dt(h.at)} · ${esc(personName(h.by))}: ${histText(h)}</div>`).join("");
+  const ro = S.readOnly, closed = s === "cancelled";
+  const sheet = openModal(`${sheetHead(`طلب دفعة N°${esc(reqNo(r))} <span class="pill st-${s}">${REQ[s][0]} · ${REQ[s][1]}</span>`)}
+    <div class="calc"><div><span>المطلوب</span><b>${money(r.amount)}</b></div><div><span>المدفوع</span><b class="pos">${money(p)}</b></div><div class="hl"><span>المتبقي</span><b>${money(Math.max(r.amount - p, 0))}</b></div></div>
+    <dl class="kv"><dt>العميل</dt><dd>${esc(clientName(r.clientId))}</dd><dt>المشروع</dt><dd>${esc(byId(S.clients,r.clientId)?.project||"")}</dd>
+      <dt>تاريخ الوثيقة</dt><dd>${esc(ymdToFr(r.date))}</dd>${r.due?`<dt>تاريخ الاستحقاق</dt><dd>${esc(ymdToFr(r.due))}</dd>`:""}
+      <dt>الرصيد عند الإصدار</dt><dd>${money(r.snap ? r.snap.bal : 0)}</dd>
+      <dt>أُنشئ</dt><dd>${dt(r.createdAt)} · ${esc(personName(r.createdBy))}</dd>
+      ${r.sentAt?`<dt>أُرسل</dt><dd>${dt(r.sentAt)} · ${esc(personName(r.sentBy))}</dd>`:""}
+      ${r.cancelled?`<dt>أُلغي</dt><dd>${dt(r.cancelledAt)} · ${esc(r.cancelReason||"")}</dd>`:""}</dl>
+    <div class="notice"><b>Objet:</b> ${esc(r.reason||"")}${r.notes?`<br>${esc(r.notes)}`:""}</div>
+    <div class="fld"><span>الدفعات المرتبطة</span>${pays.length ? `<div class="ops">${pays.map(e => opRow(e, {ctx:r.clientId})).join("")}</div>` : `<span class="muted" style="font-size:.88rem">لم تُسجَّل أي دفعة لهذا الطلب.</span>`}</div>
+    ${(r.pdfs||[]).length ? `<div class="fld"><span>نسخ PDF المؤرشفة</span><div class="row">${r.pdfs.map(x => `<button class="btn" data-act="receipt" data-rid="${esc(x.id)}" data-rtype="application/pdf">${esc(fmtDT(x.at))}</button>`).join("")}</div></div>` : ""}
+    ${hist?`<div class="hist"><b>سجل التغييرات</b>${hist}</div>`:""}
+    <div id="rq-box"></div>
+    <div class="foot"><button class="btn pri" data-act="req-pdf" data-id="${esc(r.id)}">عرض PDF</button>
+      ${ro||closed?"":`${!r.sentAt?`<button class="btn" data-act="req-sent" data-id="${esc(r.id)}">تحديد كمُرسَل</button>`:""}${s!=="paid"?`<button class="btn in" data-act="req-pay" data-id="${esc(r.id)}">تسجيل دفعة لهذا الطلب</button>`:""}<button class="btn" data-act="req-edit" data-id="${esc(r.id)}">تعديل</button>${s!=="paid"?`<button class="btn danger" data-act="req-cancel" data-id="${esc(r.id)}">إلغاء الطلب</button>`:""}`}</div>`);
+  sheet.dataset.req = r.id;
+}
+/* refresh a request's details only if the person is still looking at them */
+const refreshRequest = id => { if ($("#modal-root .sheet")?.dataset.req === id) requestDetail(id); };
+async function markSent(id){
+  const r = byId(S.requests, id); if (!r || r.sentAt) return;
+  const now = new Date().toISOString();
+  let pdfs = r.pdfs || [];
+  if (S.assets){ try { const blob = await canvasToPdf(await requestCanvas(r)); const up = await S.assets.upload(blob, {type:"application/pdf"}); pdfs = pdfs.concat([{id:up.id, at:now, by:S.me||null}]); } catch(_){} }
+  if (await write(() => S.db.doc("requests/" + id).update({sentAt:now, sentBy:S.me||null, pdfs, history:(r.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"sent"}])}))) { toast("حُدِّد الطلب كمُرسَل"); await until(() => byId(S.requests, id)?.sentAt); refreshRequest(id); }
+}
+
+/* ---------- PDF: the document is drawn on an A4 canvas (Arabic shaping comes from the browser), then wrapped in a one-page PDF ---------- */
+let PDF_CACHE = null;
+const loadImg = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+async function requestCanvas(r){
+  try { await Promise.all([document.fonts.load('400 30px "IBM Plex Sans Arabic"'), document.fonts.load('700 30px "IBM Plex Sans Arabic"')]); } catch(_){}
+  const W = 1654, H = 2339, k = W / 210;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+  const INK = "#1A201D", MUTE = "#5B655E", ACC = "#24479A", LINE = "#C9CEC7", SOFT = "#EEF1F7";
+  const clean = s => String(s ?? "").replace(/[  ]/g, " ");
+  const font = (sz, wt) => `${wt||400} ${sz*k}px "IBM Plex Sans Arabic", Arial, sans-serif`;
+  const pm = n => clean(nf2.format(Number(n)||0)) + " " + curCode();
+  function txt(s, x, y, o={}){ s = clean(s); g.font = font(o.size||3.4, o.w); g.fillStyle = o.color || INK; g.direction = /[؀-ۿ]/.test(s) ? "rtl" : "ltr"; g.textAlign = o.align || "left"; g.textBaseline = "alphabetic"; g.fillText(s, x*k, y*k); }
+  function wrap(s, x, y, w, o={}){
+    g.font = font(o.size||3.4, o.w); const lh = (o.size||3.4) * 1.5; let yy = y;
+    for (const para of clean(s).split(/\n/)){
+      let line = "";
+      for (const word of para.split(/\s+/)){ const t = line ? line + " " + word : word; if (g.measureText(t).width > w*k && line){ txt(line, x, yy, o); yy += lh; line = word; } else line = t; }
+      txt(line, x, yy, o); yy += lh;
+    }
+    return yy;
+  }
+  const rect = (x, y, w, h, fill, stroke) => { if (fill){ g.fillStyle = fill; g.fillRect(x*k, y*k, w*k, h*k); } if (stroke){ g.strokeStyle = stroke; g.lineWidth = 0.3*k; g.strokeRect(x*k, y*k, w*k, h*k); } };
+  const hline = (y, x1=16, x2=194, c=LINE) => { g.strokeStyle = c; g.lineWidth = 0.3*k; g.beginPath(); g.moveTo(x1*k, y*k); g.lineTo(x2*k, y*k); g.stroke(); };
+  const s = S.settings, c = byId(S.clients, r.clientId) || {};
+  const snap = r.snap || (() => { const st = projStats(r.clientId); return {paid:st.paid, spent:st.out, bal:st.bal, contract:st.contract}; })();
+  const logo = s.logoId ? await loadImg("/_blob/" + s.logoId) : null;
+  if (logo){ const sc = Math.min(26*k / logo.width, 26*k / logo.height); g.drawImage(logo, 16*k, 14*k, logo.width*sc, logo.height*sc); }
+  else {
+    g.fillStyle = ACC; g.beginPath(); if (g.roundRect) g.roundRect(16*k, 14*k, 22*k, 22*k, 4*k); else g.rect(16*k, 14*k, 22*k, 22*k); g.fill();
+    g.strokeStyle = "#ffffff"; g.lineWidth = 1.3*k; g.lineJoin = "round"; g.lineCap = "round"; g.beginPath();
+    const X = v => (16 + v*22/34)*k, Y = v => (14 + v*22/34)*k;
+    g.moveTo(X(8),Y(25)); g.lineTo(X(8),Y(14)); g.lineTo(X(17),Y(8)); g.lineTo(X(26),Y(14)); g.lineTo(X(26),Y(25)); g.moveTo(X(13),Y(25)); g.lineTo(X(13),Y(19)); g.lineTo(X(21),Y(19)); g.lineTo(X(21),Y(25)); g.moveTo(X(8),Y(25)); g.lineTo(X(26),Y(25)); g.stroke();
+  }
+  let y = 19;
+  txt(s.company || BRAND, 46, y, {size:5, w:700}); y += 5.5;
+  for (const l of [s.activity, s.address, [s.phone ? "Tél : " + s.phone : "", s.email].filter(Boolean).join("  ·  "), s.legal].filter(Boolean)){ txt(l, 46, y, {size:3, color:MUTE}); y += 4.4; }
+  const ty = Math.max(y, 40) + 4;
+  hline(ty);
+  txt("DEMANDE DE VERSEMENT", 16, ty + 10, {size:5.6, w:700, color:ACC});
+  txt(`N° ${reqNo(r)}`, 194, ty + 10, {size:5, w:700, align:"right"});
+  txt(`Date : ${ymdToFr(r.date)}`, 194, ty + 16, {size:3.4, align:"right"});
+  if (r.due) txt(`Échéance : ${ymdToFr(r.due)}`, 194, ty + 21, {size:3.2, color:MUTE, align:"right"});
+  const by = ty + 27;
+  rect(16, by, 86, 30, null, LINE); rect(108, by, 86, 30, null, LINE);
+  txt("CLIENT", 20, by + 6, {size:2.8, w:700, color:ACC});
+  txt(c.name || "", 20, by + 13, {size:4, w:700});
+  let cy = by + 19; for (const l of [c.phone].filter(Boolean)){ txt(l, 20, cy, {size:3.1, color:MUTE}); cy += 4.6; }
+  txt("PROJET", 112, by + 6, {size:2.8, w:700, color:ACC});
+  wrap(c.project || "—", 112, by + 13, 78, {size:3.8, w:700});
+  if (c.location) txt(c.location, 112, by + 25, {size:3.1, color:MUTE});
+  let fy = by + 40;
+  txt("SITUATION FINANCIÈRE DU PROJET", 16, fy, {size:2.8, w:700, color:ACC}); fy += 3;
+  const lines = [];
+  if (snap.contract) lines.push(["Montant du marché", pm(snap.contract)]);
+  lines.push(["Total des versements reçus", pm(snap.paid)]);
+  lines.push(["Dépenses engagées sur le projet", pm(snap.spent)]);
+  lines.push(["Solde actuel du projet", pm(snap.bal)]);
+  for (const [a, b] of lines){ rect(16, fy, 178, 9, null, LINE); txt(a, 20, fy + 6, {size:3.4}); txt(b, 190, fy + 6, {size:3.4, w:700, align:"right"}); fy += 9; }
+  rect(16, fy, 178, 13, ACC); txt("MONTANT DEMANDÉ", 20, fy + 8.6, {size:4, w:700, color:"#ffffff"}); txt(pm(r.amount), 190, fy + 8.8, {size:5, w:700, color:"#ffffff", align:"right"}); fy += 22;
+  txt("OBJET", 16, fy, {size:2.8, w:700, color:ACC}); fy = wrap(r.reason || DEFAULT_REASON, 16, fy + 6, 178, {size:3.6}) + 3;
+  if (r.notes){ txt("OBSERVATIONS", 16, fy, {size:2.8, w:700, color:ACC}); fy = wrap(r.notes, 16, fy + 6, 178, {size:3.4}) + 3; }
+  if (s.payInfo){
+    txt("MODALITÉS DE PAIEMENT", 16, fy, {size:2.8, w:700, color:ACC});
+    const n = clean(s.payInfo).split(/\n/).length;
+    const hgt = Math.max(12, n * 5.2 + 6);
+    rect(16, fy + 3, 178, hgt, SOFT);
+    wrap(s.payInfo, 20, fy + 9, 170, {size:3.3}); fy += hgt + 8;
+  }
+  const sy = Math.min(Math.max(fy + 4, 232), 244);
+  rect(16, sy, 84, 36, null, LINE); rect(110, sy, 84, 36, null, LINE);
+  txt("Le client (lu et approuvé)", 20, sy + 6, {size:3, color:MUTE});
+  txt("Cachet et signature", 114, sy + 6, {size:3, color:MUTE});
+  hline(283);
+  txt([s.company || BRAND, s.phone, s.email].filter(Boolean).join("  ·  "), 16, 288, {size:2.7, color:MUTE});
+  txt(`Document généré le ${fmtDT(new Date().toISOString())}`, 194, 288, {size:2.7, color:MUTE, align:"right"});
+  return cv;
+}
+async function canvasToPdf(cv){
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.9));
+  const img = new Uint8Array(await blob.arrayBuffer());
+  const te = new TextEncoder(); const parts = []; const offs = []; let len = 0;
+  const push = b => { const u = typeof b === "string" ? te.encode(b) : b; parts.push(u); len += u.length; };
+  const obj = (n, ...body) => { offs[n] = len; push(`${n} 0 obj\n`); body.forEach(push); push("\nendobj\n"); };
+  push("%PDF-1.4\n%âãÏÓ\n");
+  obj(1, "<< /Type /Catalog /Pages 2 0 R >>");
+  obj(2, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  obj(3, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 5 0 R >> /ProcSet [/PDF /ImageC] >> /Contents 4 0 R >>");
+  const cs = "q\n595.28 0 0 841.89 0 0 cm\n/Im0 Do\nQ";
+  obj(4, `<< /Length ${cs.length} >>\nstream\n${cs}\nendstream`);
+  obj(5, `<< /Type /XObject /Subtype /Image /Width ${cv.width} /Height ${cv.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.length} >>\nstream\n`, img, "\nendstream");
+  const xref = len;
+  let x = "xref\n0 6\n0000000000 65535 f \n";
+  for (let i = 1; i <= 5; i++) x += String(offs[i]).padStart(10, "0") + " 00000 n \n";
+  push(x + `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, {type:"application/pdf"});
+}
+async function showPdf(id){
+  const r = byId(S.requests, id); if (!r) return;
+  const sh = openModal(`${sheetHead(`Demande de versement N°${esc(reqNo(r))}`)}<div class="pdfprev"><p class="muted">جارٍ تجهيز الوثيقة…</p></div>
+    <div class="foot"><button class="btn pri" data-act="pdf-download" data-id="${esc(id)}" disabled>تنزيل PDF</button>${!S.readOnly && !r.sentAt && !r.cancelled ? `<button class="btn" data-act="req-sent" data-id="${esc(id)}">تحديد كمُرسَل</button>` : ""}<button class="btn" data-act="request" data-id="${esc(id)}">رجوع للطلب</button></div>`, "lb");
+  try {
+    const cv = await requestCanvas(r);
+    PDF_CACHE = {id, cv};
+    $(".pdfprev", sh).innerHTML = `<img alt="معاينة طلب الدفعة" src="${cv.toDataURL("image/jpeg", 0.85)}">`;
+    sh.querySelector("[data-act=pdf-download]").disabled = false;
+  } catch(_){ $(".pdfprev", sh).innerHTML = `<div class="err">تعذّر تجهيز الوثيقة.</div>`; }
+}
+async function downloadPdf(id){
+  const r = byId(S.requests, id); if (!r) return;
+  try {
+    const cv = PDF_CACHE && PDF_CACHE.id === id ? PDF_CACHE.cv : await requestCanvas(r);
+    const blob = await canvasToPdf(cv);
+    const dl = await useCap("downloads");
+    if (!dl){ toast("التنزيل غير متاح في هذه النافذة.", true); return; }
+    await dl.save({filename:`Demande-de-versement-N${reqNo(r)}.pdf`, data:blob});
+  } catch(e){ if (!e || e.code !== "declined") toast("تعذّر حفظ الملف.", true); }
+}
+
+/* ---------- client, member, worker forms ---------- */
+function clientForm(id){
+  const c = id ? byId(S.clients, id) : null;
+  const v = c || {name:"", phone:"", project:"", location:"", contract:"", startDate:"", status:"active", notes:"", lowPct:""};
+  const sh = openModal(`${sheetHead(c?"تعديل المشروع":"زبون جديد")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      <label class="fld"><span>اسم الزبون</span><input type="text" id="cf-name" value="${esc(v.name)}" autofocus></label>
+      <label class="fld"><span>المشروع</span><input type="text" id="cf-proj" value="${esc(v.project||"")}" placeholder="مثال: فيلا R+2"></label>
+      <label class="fld"><span>قيمة العقد الإجمالية (${esc(cur())})</span><input type="text" inputmode="decimal" dir="ltr" id="cf-contract" value="${v.contract?esc(String(v.contract)):""}" placeholder="0"></label>
+      ${more(`<div class="f2"><label class="fld"><span>الهاتف</span><input type="tel" id="cf-phone" dir="ltr" value="${esc(v.phone||"")}"></label>
+        <label class="fld"><span>الموقع / العنوان</span><input type="text" id="cf-loc" value="${esc(v.location||"")}"></label></div>
+        <div class="f2"><label class="fld"><span>تاريخ بداية الأشغال</span><input type="date" id="cf-start" value="${esc(v.startDate||"")}"></label>
+        <label class="fld"><span>حالة المشروع</span><select id="cf-status">${Object.entries(STATUS).map(([k,l])=>`<option value="${k}" ${v.status===k?"selected":""}>${l}</option>`).join("")}</select></label></div>
+        <label class="fld"><span>حد تنبيه انخفاض الرصيد (%)</span><input type="text" inputmode="decimal" dir="ltr" id="cf-low" value="${esc(v.lowPct??"")}" placeholder="${esc(String(S.settings.lowPct ?? 10))} (الافتراضي)"></label>
+        <label class="fld"><span>ملاحظات (شروط الدفع، مراحل الأشغال…)</span><textarea id="cf-notes">${esc(v.notes||"")}</textarea></label>`, !!c)}
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn pri" type="submit">${c?"حفظ":"إضافة الزبون"}</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  const newId = c ? null : S.db.collection("clients").doc().id;
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh);
+    const name = $("#cf-name", sh).value.trim();
+    const cv = $("#cf-contract", sh).value.trim(); const contract = cv ? parseNum(cv) : 0;
+    const lv = $("#cf-low", sh).value.trim(); const lowPct = lv ? parseNum(lv) : "";
+    if (!name) { err.textContent = "اكتبوا اسم الزبون."; return; }
+    if (isNaN(contract) || contract < 0) { err.textContent = "قيمة العقد غير صحيحة."; return; }
+    if (lv && !(lowPct >= 0 && lowPct <= 100)) { err.textContent = "حد التنبيه بين 0 و 100."; return; }
+    const now = new Date().toISOString();
+    const body = {name, phone:$("#cf-phone", sh).value.trim(), location:$("#cf-loc", sh).value.trim(), project:$("#cf-proj", sh).value.trim(), contract, startDate:$("#cf-start", sh).value, status:$("#cf-status", sh).value, notes:$("#cf-notes", sh).value.trim(), lowPct};
+    $("[type=submit]", sh).disabled = true;
+    let ok;
+    if (c){ const prev = diff(c, body, Object.keys(body)); ok = await write(() => S.db.doc("clients/"+c.id).set({...strip(c), ...body, updatedAt:now, updatedBy:S.me||null, history:(c.history||[]).concat(Object.keys(prev).length ? [{at:now, by:S.me||null, prev}] : [])})); }
+    else ok = await write(() => S.db.doc("clients/"+newId).set({...body, createdAt:now, createdBy:S.me||null, history:[]}));
+    if (ok){ closeModal(); toast(c?"حُفظ المشروع":"أُضيف الزبون"); } else $("[type=submit]", sh).disabled = false;
+  });
+}
+function memberForm(id){
+  const m = id ? byId(S.members, id) : null;
+  const v = m || {name:"", kind: S.members.filter(x=>x.kind==="partner").length < 2 ? "partner" : "member", share:50, phone:"", userId:""};
+  const used = S.entries.some(e => [e.memberId,e.fromId,e.toId,e.beneficiaryId].includes(id));
+  const sh = openModal(`${sheetHead(m?"تعديل":"إضافة شريك أو عضو أو صندوق")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      <label class="fld"><span>الاسم</span><input type="text" id="mf-name" value="${esc(v.name)}" autofocus placeholder="اسم الشخص، أو مثال: صندوق المكتب، الحساب البنكي"></label>
+      <div class="f2"><label class="fld"><span>الصفة</span><select id="mf-kind">${Object.entries(KIND).map(([k,l])=>`<option value="${k}" ${v.kind===k?"selected":""}>${l}</option>`).join("")}</select></label>
+      <label class="fld" id="mf-share-w"><span>نسبة الشراكة %</span><input type="text" inputmode="decimal" dir="ltr" id="mf-share" value="${esc(v.share||"")}" placeholder="50"></label></div>
+      <label class="fld"><span>الهاتف</span><input type="tel" dir="ltr" id="mf-phone" value="${esc(v.phone||"")}"></label>
+      ${S.me?`<label class="row" style="gap:8px"><input type="checkbox" id="mf-me" ${v.userId===S.me?"checked":""}> <span>هذا أنا (يُختار تلقائيا عند تسجيل عملياتي)</span></label>`:""}
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn pri" type="submit">حفظ</button><button class="btn" type="button" data-act="close">إلغاء</button>${m && !used && !S.readOnly ? `<button class="btn danger" type="button" data-act="del-member" data-id="${esc(m.id)}">حذف</button>`:""}</div>
+    </form>`);
+  const syncK = () => { $("#mf-share-w", sh).hidden = $("#mf-kind", sh).value !== "partner"; };
+  syncK(); $("#mf-kind", sh).addEventListener("change", syncK);
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const err = $(".err", sh);
+    const name = $("#mf-name", sh).value.trim(); const kind = $("#mf-kind", sh).value;
+    const share = kind === "partner" ? parseNum($("#mf-share", sh).value || "50") : 0;
+    if (!name) { err.textContent = "اكتبوا الاسم."; return; }
+    if (isNaN(share) || share < 0 || share > 100) { err.textContent = "النسبة بين 0 و 100."; return; }
+    const meBox = $("#mf-me", sh);
+    let userId = v.userId || "";
+    if (meBox) userId = meBox.checked ? S.me : (v.userId === S.me ? "" : v.userId || "");
+    const now = new Date().toISOString();
+    const body = {name, kind, share, phone:$("#mf-phone", sh).value.trim(), userId};
+    let ok = true;
+    if (meBox && meBox.checked){ for (const o of S.members) if (o.id !== id && o.userId === S.me) ok = ok && await write(() => S.db.doc("members/"+o.id).update({userId:""})); }
+    ok = ok && (m ? await write(() => S.db.doc("members/"+m.id).set({...strip(m), ...body, updatedAt:now}))
+                  : await write(() => S.db.collection("members").doc().set({...body, createdAt:now, createdBy:S.me||null})));
+    if (ok){ closeModal(); toast("حُفظ"); }
+  });
+}
+function workerForm(id){
+  const w = id ? byId(S.workers, id) : null;
+  const v = w || {name:"", specialty:"", phone:"", notes:""};
+  const newId = w ? null : S.db.collection("workers").doc().id;
+  const sh = openModal(`${sheetHead(w ? "تعديل بيانات العامل" : "إضافة عامل أو حرفي")}
+    <form novalidate style="display:flex;flex-direction:column;gap:12px">
+      <label class="fld"><span>الاسم</span><input type="text" id="wf-name" value="${esc(v.name)}" autofocus></label>
+      <div class="f2"><label class="fld"><span>التخصص</span><input type="text" id="wf-spec" list="dl-spec2" value="${esc(v.specialty||"")}"></label>
+      <label class="fld"><span>الهاتف</span><input type="tel" dir="ltr" id="wf-phone" value="${esc(v.phone||"")}"></label></div>
+      <label class="fld"><span>ملاحظات</span><textarea id="wf-notes">${esc(v.notes||"")}</textarea></label>
+      <datalist id="dl-spec2">${SPECIALTIES.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+      <div class="err" role="alert"></div>
+      <div class="foot"><button class="btn pri" type="submit">حفظ</button><button class="btn" type="button" data-act="close">إلغاء</button></div>
+    </form>`);
+  $("form", sh).addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const name = $("#wf-name", sh).value.trim(); if (!name) { $(".err", sh).textContent = "اكتبوا الاسم."; return; }
+    const body = {name, specialty:$("#wf-spec", sh).value.trim(), phone:$("#wf-phone", sh).value.trim(), notes:$("#wf-notes", sh).value.trim()};
+    const now = new Date().toISOString();
+    $("[type=submit]", sh).disabled = true;
+    let ok;
+    if (w){ const prev = diff(w, body, Object.keys(body)); ok = await write(() => S.db.doc("workers/"+w.id).set({...strip(w), ...body, updatedAt:now, updatedBy:S.me||null, history:(w.history||[]).concat(Object.keys(prev).length ? [{at:now, by:S.me||null, prev}] : [])})); }
+    else ok = await write(() => S.db.doc("workers/"+newId).set({...body, createdAt:now, createdBy:S.me||null, history:[]}));
+    if (ok){ closeModal(); toast("حُفظ"); } else $("[type=submit]", sh).disabled = false;
+  });
+}
+
+/* ---------- receipt viewer ---------- */
+function receiptView(rid, type, eid){
+  const isPdf = /pdf/.test(type);
+  openModal(`${sheetHead(isPdf ? "ملف PDF" : "الفاتورة")}
+    ${isPdf ? `<iframe src="/_blob/${esc(rid)}" title="ملف PDF"></iframe><a class="btn" href="/_blob/${esc(rid)}" target="_blank" rel="noopener">فتح الملف في نافذة جديدة</a>` : `<img src="/_blob/${esc(rid)}" alt="صورة الفاتورة">`}
+    <div class="foot"><button class="btn" data-act="save-receipt" data-rid="${esc(rid)}" data-rtype="${esc(type)}">حفظ نسخة على الجهاز</button>${eid?`<button class="btn" data-act="entry" data-id="${esc(eid)}">رجوع للعملية</button>`:`<button class="btn" data-act="close">إغلاق</button>`}</div>`, "lb");
+}
+async function saveReceipt(rid, type){
+  try {
+    const dl = await useCap("downloads"); if (!dl) { toast("الحفظ على الجهاز غير متاح هنا.", true); return; }
+    const b = await (await fetch("/_blob/" + rid)).blob();
+    const ext = /pdf/.test(type) ? "pdf" : /png/.test(type) ? "png" : "jpg";
+    await dl.save({filename:`facture-${rid.slice(0,8)}.${ext}`, data:b});
+  } catch(e){ if (!e || e.code !== "declined") toast("تعذّر حفظ الملف.", true); }
+}
+
+/* ---------- export ---------- */
+async function exportCsv(list, tag){
+  const q = s => `"${String(s??"").replace(/"/g,'""')}"`;
+  const head = ["التاريخ","الساعة","النوع","الحساب","المرحلة","نوع المصروف","البيان","الكمية","الوحدة","سعر الوحدة","العامل","المبلغ","طريقة الدفع","استلم/دفع","من","إلى","لفائدة","المورد","المرجع","طلب الدفع","ملاحظة","عدد المرفقات","الحالة","سبب الإلغاء","سجّلها","وقت التسجيل"];
+  const rows = list.map(e => {
+    const signed = e.type === "out" || (e.type === "fee" && tag !== OFFICE) ? -e.amount : e.amount;
+    const r = e.requestId && byId(S.requests, e.requestId);
+    return [fmtD(e.at), fmtT(e.at), e.type==="fee"?"أتعاب للمكتب":TYPE_LABEL[e.type], e.type==="transfer"?"":clientName(e.clientId), e.type==="out"&&e.clientId!==OFFICE?phaseName(e.phaseId):"", e.type==="out"&&e.clientId!==OFFICE?XKIND[kindOf(e)]:"", e.item||(e.type==="fee"?FEE_LABEL[e.feeKind]:CAT_LABEL[e.category])||"", e.qty||"", e.unit||"", e.unitPrice||"", e.workerId?workerName(e.workerId):"", signed.toFixed(2), METHOD_LABEL[e.method]||"", e.memberId?memberName(e.memberId):"", e.fromId?memberName(e.fromId):"", e.toId?memberName(e.toId):"", e.beneficiaryId?memberName(e.beneficiaryId):"", e.supplier||"", e.ref||"", r?"N°"+reqNo(r):"", e.note||"", (e.receipts||[]).length, e.void?"ملغاة":"سارية", e.voidReason||"", personName(e.createdBy), fmtDT(e.createdAt)];
+  });
+  const csv = "﻿" + [head, ...rows].map(r => r.map(q).join(",")).join("\r\n");
+  const d = new Date(); const fn = `operations-${tag && tag !== OFFICE ? "projet-" : ""}${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.csv`;
+  try { const dl = await useCap("downloads"); if (dl){ await dl.save({filename:fn, data:csv}); return; } } catch(e){ if (e && e.code === "declined") return; }
+  openModal(`${sheetHead("نسخ البيانات")}<p class="muted" style="margin:0">الحفظ المباشر غير متاح هنا. انسخوا النص والصقوه في Excel.</p><textarea id="csv-t" style="min-height:240px" dir="ltr" readonly>${esc(csv.slice(1))}</textarea><div class="foot"><button class="btn pri" data-act="copy-csv">نسخ</button><button class="btn" data-act="close">إغلاق</button></div>`);
+}
+
+/* ---------- settings & phases actions ---------- */
+function phDraft(){ if (!S.phDraft) S.phDraft = phaseList().map(p => ({id:p.id, name:p.name, hidden:!!p.hidden})); return S.phDraft; }
+async function saveSettings(){
+  const d = {...S.settings, ...(S.setDraft||{})};
+  const low = d.lowPct === "" || d.lowPct == null ? 10 : parseNum(d.lowPct);
+  if (!(low >= 0 && low <= 100)) { toast("حد التنبيه بين 0 و 100.", true); return; }
+  const body = {...d, lowPct:low, currency:(d.currency||"").trim() || "دج", currencyCode:(d.currencyCode||"").trim() || "DZD"};
+  if (await write(() => S.db.doc("settings/main").set(body))) { S.setDraft = null; toast("حُفظت الإعدادات"); }
+}
+async function savePhases(){
+  const list = S.phDraft; if (!list) return;
+  if (list.some(p => !p.name.trim())) { toast("لكل مرحلة اسم. أكملوا الأسماء الفارغة.", true); return; }
+  if (await write(() => S.db.doc("settings/phases").set({list:list.map(p => ({id:p.id, name:p.name.trim(), hidden:!!p.hidden})), updatedAt:new Date().toISOString(), updatedBy:S.me||null}))) { S.phDraft = null; toast("حُفظت المراحل"); draw(); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async ev => {
+  const scrim = ev.target.closest("[data-scrim]"); if (scrim && ev.target === scrim) { closeModal(); return; }
+  const el = ev.target.closest("[data-act]"); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  const cidOf = () => el.dataset.client || currentProject();
+  const phOf = () => { const p = el.dataset.phase; if (p === undefined || p === "") return S.pview === "phase" && currentProject() && currentProject() === cidOf() ? S.phaseId : undefined; return p === "none" ? "" : p; };
+  switch (a){
+    case "tab": closeModal(); go({tab:el.dataset.tab, clientId:null, workerId:null, pview:"dash", osub:"overview", csub:"list"}); break;
+    case "osub": go({osub:el.dataset.v}); break;
+    case "csub": go({csub:el.dataset.v, workerId:null}); break;
+    case "client": closeModal(); if (id === OFFICE) go({tab:"office", osub:"overview", clientId:null}); else go({tab:"clients", clientId:id, workerId:null, pview:"dash"}); break;
+    case "back": go({clientId:null, pview:"dash"}); break;
+    case "pview": go({pview:el.dataset.v}); break;
+    case "phase": { closeModal(); const ph = el.dataset.ph === "none" ? "" : el.dataset.ph; go({tab:"clients", clientId:el.dataset.client || S.clientId, workerId:null, pview:"phase", phaseId:ph}); break; }
+    case "worker": closeModal(); go({tab:"clients", clientId:null, workerId:id}); break;
+    case "worker-back": go({workerId:null, csub:"workers"}); break;
+    case "new-entry": chooser(); break;
+    case "pay": paymentForm({clientId:cidOf()}); break;
+    case "expense": expenseForm({clientId:cidOf(), kind:el.dataset.kind, phaseId:phOf()}); break;
+    case "fee": feeForm({clientId:cidOf()}); break;
+    case "office-entry": entryForm({type:el.dataset.type, category:el.dataset.cat}); break;
+    case "transfer": entryForm({type:"transfer"}); break;
+    case "new-request": requestForm(cidOf()); break;
+    case "request": requestDetail(id); break;
+    case "req-pdf": showPdf(id); break;
+    case "pdf-download": downloadPdf(id); break;
+    case "req-sent": el.disabled = true; await markSent(id); break;
+    case "req-pay": { const r = byId(S.requests, id); if (r) paymentForm({clientId:r.clientId, requestId:id, amount:Math.max(r.amount - reqPaid(id), 0)}); break; }
+    case "req-edit": requestForm(null, id); break;
+    case "req-cancel": $("#rq-box").innerHTML = `<div class="card" style="border-color:var(--out)"><label class="fld"><span>سبب إلغاء الطلب</span><input type="text" id="rq-r"></label><div class="err" id="rq-err"></div><div class="row"><button class="btn out" data-act="req-cancel-ok" data-id="${esc(id)}">تأكيد الإلغاء</button><button class="btn" data-act="req-cancel-no">تراجع</button></div></div>`; $("#rq-r").focus(); break;
+    case "req-cancel-no": $("#rq-box").innerHTML = ""; break;
+    case "req-cancel-ok": {
+      const reason = $("#rq-r").value.trim(); if (!reason) { $("#rq-err").textContent = "اكتبوا سبب الإلغاء."; return; }
+      const r = byId(S.requests, id), now = new Date().toISOString();
+      if (await write(() => S.db.doc("requests/"+id).update({cancelled:true, cancelReason:reason, cancelledAt:now, cancelledBy:S.me||null, history:(r.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"cancel", reason}])}))) { toast("أُلغي الطلب وبقي في السجل"); await until(() => byId(S.requests, id)?.cancelled); refreshRequest(id); }
+      break; }
+    case "entry": entryDetail(id); break;
+    case "edit-entry": editEntry(id); break;
+    case "void": voidBox(id); break;
+    case "void-no": $("#void-box").innerHTML = ""; break;
+    case "void-ok": {
+      const r = $("#void-r").value.trim(); if (!r) { $("#void-err").textContent = "اكتبوا سبب الإلغاء."; return; }
+      const e = byId(S.entries, id); const now = new Date().toISOString();
+      if (await write(() => S.db.doc(epath(e)).update({void:true, voidReason:r, voidAt:now, voidBy:S.me||null, history:(e.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"void", reason:r}])}))) { closeModal(); toast("أُلغيت العملية وبقيت في السجل"); }
+      break; }
+    case "restore": {
+      const e = byId(S.entries, id); const now = new Date().toISOString();
+      if (await write(() => S.db.doc(epath(e)).update({void:false, history:(e.history||[]).concat([{at:now, by:S.me||null, prev:{}, action:"restore"}])}))) { closeModal(); toast("أُعيد تفعيل العملية"); }
+      break; }
+    case "receipt": receiptView(el.dataset.rid, el.dataset.rtype, el.dataset.eid); break;
+    case "save-receipt": saveReceipt(el.dataset.rid, el.dataset.rtype); break;
+    case "new-client": clientForm(); break;
+    case "edit-client": clientForm(id); break;
+    case "del-client": {
+      if (el.dataset.sure){ if (await write(() => S.db.doc("clients/"+id).delete())) { go({clientId:null, pview:"dash"}); toast("حُذف الزبون"); } }
+      else { el.dataset.sure = "1"; el.textContent = "اضغطوا مرة أخرى لتأكيد الحذف"; }
+      break; }
+    case "new-member": memberForm(); break;
+    case "edit-member": if (!S.readOnly) memberForm(id); break;
+    case "del-member": {
+      if (el.dataset.sure){ if (await write(() => S.db.doc("members/"+id).delete())) { closeModal(); toast("حُذف"); } }
+      else { el.dataset.sure = "1"; el.textContent = "اضغطوا مرة أخرى للتأكيد"; }
+      break; }
+    case "new-worker": workerForm(); break;
+    case "edit-worker": workerForm(id); break;
+    case "del-worker": {
+      if (el.dataset.sure){ if (await write(() => S.db.doc("workers/"+id).delete())) { go({workerId:null}); toast("حُذف العامل"); } }
+      else { el.dataset.sure = "1"; el.textContent = "اضغطوا مرة أخرى للتأكيد"; }
+      break; }
+    case "save-settings": saveSettings(); break;
+    case "logo-remove": if (await write(() => S.db.doc("settings/main").set({...S.settings, logoId:""}))) toast("أُزيل الشعار"); break;
+    case "ph-up": case "ph-down": { const l = phDraft(), i = Number(el.dataset.i), j = a === "ph-up" ? i-1 : i+1; if (j >= 0 && j < l.length){ [l[i], l[j]] = [l[j], l[i]]; } draw(); break; }
+    case "ph-hide": { const l = phDraft(); l[Number(el.dataset.i)].hidden = !l[Number(el.dataset.i)].hidden; draw(); break; }
+    case "ph-add": { const n = (S.phNew||"").trim(); if (!n) { toast("اكتبوا اسم المرحلة الجديدة.", true); return; } phDraft().push({id:"p" + Math.random().toString(36).slice(2,9), name:n, hidden:false}); S.phNew = ""; draw(); break; }
+    case "ph-save": savePhases(); break;
+    case "ph-reset": S.phDraft = null; draw(); break;
+    case "export": exportCsv(filtered()); break;
+    case "export-client": { const c = el.dataset.client; exportCsv(sortEntries(entriesFor(c)), c); break; }
+    case "copy-csv": { const t = $("#csv-t"); try { await navigator.clipboard.writeText(t.value); toast("نُسخ"); } catch(_){ t.select(); } break; }
+    case "clear-f": S.f = {q:"", type:"", client:"", member:"", month:""}; draw(); break;
+    case "close": closeModal(); break;
+  }
+});
+document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && $("#modal-root").innerHTML) closeModal();
+  if (ev.key === "Enter" && ev.target.matches && ev.target.matches("tr[data-act]")) ev.target.click();
+});
+$("#main").addEventListener("input", ev => {
+  const t = ev.target;
+  const map = {fq:"q", ft:"type", fc:"client", fm:"member", fmo:"month"};
+  if (map[t.id]) { S.f[map[t.id]] = t.value; draw(); }
+  else if (t.id === "cq") { S.cq = t.value; draw(); }
+  else if (t.id && t.id.startsWith("st-")) { S.setDraft = {...(S.setDraft||{}), [t.id.slice(3)]: t.value}; }
+  else if (t.id && t.id.startsWith("ph-n-")) { const p = phDraft().find(x => x.id === t.id.slice(5)); if (p) p.name = t.value; }
+  else if (t.id === "ph-new") S.phNew = t.value;
+});
+$("#main").addEventListener("change", async ev => {
+  if (ev.target.id !== "logo-in" || !ev.target.files[0]) return;
+  const f = ev.target.files[0]; ev.target.value = "";
+  try { const [up] = await uploadFiles([f]); if (await write(() => S.db.doc("settings/main").set({...S.settings, logoId:up.id}))) toast("حُفظ الشعار"); }
+  catch(x){ toast(errMsg(x), true); }
+});
+
+/* ---------- boot ---------- */
+async function boot(){
+  draw();
+  try { new ResizeObserver(() => document.documentElement.style.setProperty("--hdr-h", $(".top").offsetHeight + "px")).observe($(".top")); } catch(_){}
+  const [db, user, assets] = await Promise.all([useCap("db"), useCap("user"), useCap("assets")]);
+  S.user = user; S.assets = assets;
+  if (!db){ S.noDb = true; draw(); return; }
+  S.db = db;
+  if (user){
+    try { S.meProfile = await user.me(); S.me = S.meProfile.id; } catch(_){}
+    try { const c = await user.can("data.write"); if (c === false) S.readOnly = true; } catch(_){}
+    try { S.canEdit = !!(await user.canEdit()); } catch(_){}
+  }
+  const done = k => { S.loaded[k] = true; if (Object.values(S.loaded).every(Boolean)) S.ready = true; render(); };
+  const onErr = e => { if (e && (e.code === "revoked" || e.code === "not_granted")) S.readOnly = true; S.ready = true; toast("تعذّر تحميل جزء من الدفتر. أعيدوا فتح الصفحة.", true); render(); };
+  const num = d => { const x = d.data(); return {id:d.id, ...x, amount:Number(x.amount)||0}; };
+  const sub = (name, map) => db.collection(name).onSnapshot(s => { S[name] = s.docs.map(map || (d => ({id:d.id, ...d.data()}))); done(name); }, onErr);
+  sub("clients"); sub("members"); sub("workers"); sub("jobs"); sub("requests", num);
+  const merge = () => { S.entries = S._main.concat(S._office); };
+  db.collection("entries").onSnapshot(s => { S._main = s.docs.map(num); merge(); done("entries"); }, onErr);
+  db.collection("office").onSnapshot(s => { S._office = s.docs.map(d => ({...num(d), _col:"office", clientId:OFFICE})); merge(); done("office"); }, () => done("office"));
+  db.doc("settings/main").onSnapshot(s => { S.settings = s.exists ? s.data() : {}; render(); }, () => {});
+  db.doc("settings/phases").onSnapshot(s => { S.phasesDoc = s.exists ? s.data() : null; render(); }, () => {});
+}
+if (window.__LEDGER_TEST__) window.__ledger = {S, homeView, projStats, clientTotals, companyTotals, reqStatus, reqPaid, jobPaid, workerStats, phaseCosts, suggestAmount, outstanding, parseNum, requestCanvas, canvasToPdf, profitCalc};
+boot();
+})();
+</script>
